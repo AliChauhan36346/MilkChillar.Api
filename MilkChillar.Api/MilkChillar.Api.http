@@ -1,0 +1,6 @@
+@MilkChillar.Api_HostAddress = http://localhost:5168
+
+GET {{MilkChillar.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
