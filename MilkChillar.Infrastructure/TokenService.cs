@@ -22,7 +22,7 @@ namespace MilkChillar.Infrastructure
         {
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new(ClaimTypes.Name, user.Username),
                 new("tenant_id", user.TenantId.ToString())
             };

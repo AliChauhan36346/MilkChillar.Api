@@ -9,12 +9,12 @@ namespace MilkChillar.Domain.Entities
 {
     public class UserPermission
     {
-        [Column("user_id")]
         public int UserId { get; set; }
-        public User User { get; set; }
-
-        [Column("permission_id")]
         public int PermissionId { get; set; }
-        public Permission Permission { get; set; }
+        public DateTime GrantedAt { get; set; }
+
+        public User User { get; set; } = default!;
+        public Permission Permission { get; set; } = default!;
     }
+
 }

@@ -37,7 +37,9 @@ public class AuthController : ControllerBase
         if (user == null)
             return Unauthorized("Invalid username");
 
-        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        bool isPasswordValid = request.Password == user.PasswordHash;
+
+        //bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
 
         if (!isPasswordValid)
             return Unauthorized("Invalid password");
@@ -55,7 +57,7 @@ public class AuthController : ControllerBase
             token,
             user = new
             {
-                user.Id,
+                user.UserId,
                 user.Username,
                 Role = user.Role?.Name,
                 user.TenantId,

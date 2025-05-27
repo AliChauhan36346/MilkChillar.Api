@@ -4,11 +4,12 @@ namespace MilkChillar.Domain.Entities;
 
 public class Permission
 {
-    [Column("permission_id")]
-    public int PermissionID { get; set; } // maps to permission_id
-    public string Name { get; set; }
-    public string Description { get; set; }
+    public int PermissionId { get; set; }
+    public string Name { get; set; } = default!;
+    public string? Description { get; set; }
 
-    public List<RolePermission> RolePermissions { get; set; }
-    public List<UserPermission> UserPermissions { get; set; }
+    public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
+    public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
 }
+
+
