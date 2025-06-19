@@ -220,7 +220,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.MainAccountCode).HasColumnName("main_account_code");
             entity.Property(e => e.Name).HasColumnName("name");
-            entity.Property(e => e.FinancialStatementComponent).HasColumnName("financial_component");
+            entity.Property(e => e.FinancialStatementComponent).HasColumnName("financial_statement_component");
         });
 
         // SUB ACCOUNT
@@ -243,7 +243,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AccountId).HasColumnName("account_id");
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.SubAccountId).HasColumnName("sub_account_id");
-            entity.Property(e => e.SubAccountCode).HasColumnName("sub_account_code");
+            entity.Property(e => e.FullCode).HasColumnName("full_code");
+            entity.Property(e => e.AccountCode).HasColumnName("account_code");
             entity.Property(e => e.Name).HasColumnName("name");
         });
 

@@ -2,11 +2,14 @@
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using MilkChillar.Infrastructure;
-using MilkChillar.Application.Common.Settings; // If JwtSettings is here
+using MilkChillar.Application.Common.Settings; 
 using Microsoft.EntityFrameworkCore;
-using MilkChillar.Application; // <-- Make sure this namespace is imported
+using MilkChillar.Application; 
 using Microsoft.AspNetCore.Authorization;
 using MilkChillar.Infrastructure.Authorization;
+using MilkChillar.Application.Interfaces;
+using MilkChillar.Infrastructure.Services;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +33,8 @@ var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSetting
 // ⬇️ 2. Register TokenService
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+
+
 // ⬇️ 3. Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
@@ -50,15 +55,31 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+//builder.Services.AddAuthorization();
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("Permission", policy =>
-        policy.Requirements.Add(new PermissionRequirement("")));
+    // Register dynamic policies based on permission name
+    var permissions = new[]
+    {
+    "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
+    "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
+    "account.create", "account.read", "account.update", "account.delete",
+    "supplier.create", "supplier.read", "supplier.update", "supplier.delete"
+    };
+
+    foreach (var permission in permissions)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.Requirements.Add(new PermissionRequirement(permission)));
+    }
 });
 
+
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -67,6 +88,35 @@ builder.Services.AddSwaggerGen();
 // ✅ Register ApplicationDbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter 'Bearer' followed by your JWT token.\nExample: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 
 var app = builder.Build();

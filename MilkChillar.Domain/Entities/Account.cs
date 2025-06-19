@@ -11,7 +11,9 @@ namespace MilkChillar.Domain.Entities
         public int AccountId { get; set; }
         public int TenantId { get; set; }
         public int SubAccountId { get; set; }
-        public string SubAccountCode { get; set; } = default!;
+        public string AccountCode { get; set; } = default!;
+
+        public string FullCode { get; set; } = null!;
         public string Name { get; set; } = default!;
 
         public Tenant Tenant { get; set; } = default!;
