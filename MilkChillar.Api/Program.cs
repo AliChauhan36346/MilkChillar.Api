@@ -62,11 +62,16 @@ builder.Services.AddAuthorization(options =>
     // Register dynamic policies based on permission name
     var permissions = new[]
     {
-    "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
-    "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
-    "account.create", "account.read", "account.update", "account.delete",
-    "supplier.create", "supplier.read", "supplier.update", "supplier.delete"
+        "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
+        "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
+        "account.create", "account.read", "account.update", "account.delete",
+        "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
+        "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
+        "employee.create", "employee.read", "employee.update", "employee.delete",
+        "user.create", "user.read", "user.update", "user.delete"
     };
+
+
 
     foreach (var permission in permissions)
     {
@@ -79,6 +84,9 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IBuyerService, BuyerService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 
 builder.Services.AddControllers();
