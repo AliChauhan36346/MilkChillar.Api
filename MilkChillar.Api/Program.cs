@@ -68,8 +68,13 @@ builder.Services.AddAuthorization(options =>
         "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
         "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
         "employee.create", "employee.read", "employee.update", "employee.delete",
-        "user.create", "user.read", "user.update", "user.delete"
+        "user.create", "user.read", "user.update", "user.delete",
+        "role.create", "role.read", "role.update", "role.delete",
+        "rolepermission.create", "rolepermission.read", "rolepermission.delete",
+        "userpermission.create", "userpermission.read", "userpermission.delete"
     };
+
+
 
 
 
@@ -87,6 +92,9 @@ builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IBuyerService, BuyerService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserPermissionService, UserPermissionService>();
+builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
+builder.Services.AddScoped<IRoleService,RoleService>();
 
 
 builder.Services.AddControllers();
