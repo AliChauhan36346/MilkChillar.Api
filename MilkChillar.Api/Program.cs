@@ -61,18 +61,24 @@ builder.Services.AddAuthorization(options =>
 {
     // Register dynamic policies based on permission name
     var permissions = new[]
-    {
-        "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
-        "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
-        "account.create", "account.read", "account.update", "account.delete",
-        "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
-        "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
-        "employee.create", "employee.read", "employee.update", "employee.delete",
-        "user.create", "user.read", "user.update", "user.delete",
-        "role.create", "role.read", "role.update", "role.delete",
-        "rolepermission.create", "rolepermission.read", "rolepermission.delete",
-        "userpermission.create", "userpermission.read", "userpermission.delete"
-    };
+{
+    "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
+    "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
+    "account.create", "account.read", "account.update", "account.delete",
+    "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
+    "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
+    "employee.create", "employee.read", "employee.update", "employee.delete",
+    "user.create", "user.read", "user.update", "user.delete",
+    "role.create", "role.read", "role.update", "role.delete",
+    "rolepermission.create", "rolepermission.read", "rolepermission.delete",
+    "userpermission.create", "userpermission.read", "userpermission.delete",
+    "permission.read",
+
+    // ✅ New permissions
+    "chillar.create", "chillar.read", "chillar.update", "chillar.delete",
+    "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete"
+};
+
 
 
 
@@ -85,6 +91,7 @@ builder.Services.AddAuthorization(options =>
     }
 });
 
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IAccountService, AccountService>();
@@ -95,6 +102,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserPermissionService, UserPermissionService>();
 builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
 builder.Services.AddScoped<IRoleService,RoleService>();
+builder.Services.AddScoped<IChillarReceiveService,ChillarReceiveService>();
+builder.Services.AddScoped<IChillarService,ChillarService>();
 
 
 builder.Services.AddControllers();

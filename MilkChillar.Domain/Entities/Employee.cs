@@ -16,6 +16,9 @@ namespace MilkChillar.Domain.Entities
         public decimal? Salary { get; set; }
         public bool IsActive { get; set; } = true;
 
+        public int? ChillarId { get; set; }  // ➕ New
+        public Chillar? Chillar { get; set; }  // ➕ Navigation
+
         public Tenant Tenant { get; set; } = default!;
     }
 

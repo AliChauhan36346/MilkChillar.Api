@@ -90,7 +90,9 @@ namespace MilkChillar.Infrastructure.Services
                 Designation = employee.Designation,
                 ContactNumber = employee.ContactNumber,
                 Salary = employee.Salary,
-                IsActive = employee.IsActive
+                IsActive = employee.IsActive,
+                ChillarId = employee.ChillarId
+
             };
         }
 
@@ -103,7 +105,8 @@ namespace MilkChillar.Infrastructure.Services
                 ContactNumber = dto.ContactNumber,
                 Salary = dto.Salary,
                 IsActive = dto.IsActive,
-                TenantId = tenantId
+                TenantId = tenantId,
+                ChillarId = dto.ChillarId
             };
 
             _dbContext.Employees.Add(employee);
@@ -116,7 +119,8 @@ namespace MilkChillar.Infrastructure.Services
                 Designation = employee.Designation,
                 ContactNumber = employee.ContactNumber,
                 Salary = employee.Salary,
-                IsActive = employee.IsActive
+                IsActive = employee.IsActive,
+                ChillarId = employee.ChillarId
             };
         }
 
@@ -132,6 +136,7 @@ namespace MilkChillar.Infrastructure.Services
             employee.ContactNumber = dto.ContactNumber;
             employee.Salary = dto.Salary;
             employee.IsActive = dto.IsActive;
+            employee.ChillarId = dto.ChillarId;
 
             await _dbContext.SaveChangesAsync();
 
@@ -142,7 +147,8 @@ namespace MilkChillar.Infrastructure.Services
                 Designation = employee.Designation,
                 ContactNumber = employee.ContactNumber,
                 Salary = employee.Salary,
-                IsActive = employee.IsActive
+                IsActive = employee.IsActive,
+                ChillarId = employee.ChillarId
             };
         }
 

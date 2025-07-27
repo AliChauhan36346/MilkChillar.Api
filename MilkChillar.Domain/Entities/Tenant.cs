@@ -25,5 +25,7 @@ namespace MilkChillar.Domain.Entities
         // Optional: Add Buyers, Suppliers, etc., if related
         public ICollection<Buyer> Buyers { get; set; } = new List<Buyer>();
         public ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
+
+        public ICollection<Chillar> Chillars { get; set; } = new List<Chillar>();
     }
 }

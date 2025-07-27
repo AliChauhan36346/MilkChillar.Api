@@ -18,6 +18,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<SubAccount> SubAccounts { get; set; }
     public DbSet<Account> Accounts { get; set; }
     public DbSet<Employee> Employees { get; set; }
+    public DbSet<Chillar> Chillars { get; set; }
+    public DbSet<ChillarReceive> ChillarReceives { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<UserPermission> UserPermissions { get; set; }
 
@@ -105,6 +107,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
 
             entity.Property(rp => rp.RoleId).HasColumnName("role_id");  // Add this
+            entity.Property(rp => rp.TenantId).HasColumnName("tenant_id");  // Add this
             entity.Property(rp => rp.PermissionId).HasColumnName("permission_id");  // Add this
 
             entity.HasOne(rp => rp.Role)
@@ -202,7 +205,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.ToTable("tenants");
             entity.HasKey(e => e.TenantId);
-            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.TenantId).HasColumnName("id");
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Email).HasColumnName("email");
             entity.Property(e => e.Phone).HasColumnName("phone");
@@ -260,9 +263,73 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Salary).HasColumnName("salary");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
 
+            entity.Property(e => e.ChillarId).HasColumnName("chillar_id");
+
             entity.HasOne(e => e.Tenant)
                   .WithMany(t => t.Employees)
                   .HasForeignKey(e => e.TenantId);
+            entity.HasOne(e => e.Chillar)
+                  .WithMany()
+                  .HasForeignKey(e => e.ChillarId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
+
+        modelBuilder.Entity<Chillar>(entity =>
+        {
+            entity.ToTable("chillars");
+
+            entity.HasKey(c => c.ChillarId);
+
+            entity.Property(c => c.ChillarId).HasColumnName("chillar_id");
+            entity.Property(c => c.TenantId).HasColumnName("tenant_id");
+            entity.Property(c => c.Name).HasColumnName("name").IsRequired();
+            entity.Property(c => c.Location).HasColumnName("location");
+            entity.Property(c => c.IsActive).HasColumnName("is_active");
+
+            entity.HasOne(c => c.Tenant)
+                .WithMany(t => t.Chillars)
+                .HasForeignKey(c => c.TenantId);
+        });
+
+        modelBuilder.Entity<ChillarReceive>(entity =>
+        {
+            entity.ToTable("chillar_receive");
+            entity.HasKey(e => e.ReceiveId);
+            entity.Property(e => e.ReceiveId).HasColumnName("receive_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.TimeOfDay).HasColumnName("time_of_day");
+            entity.Property(e => e.ChillarId).HasColumnName("chillar_id");
+            entity.Property(e => e.ChillarInchargeId).HasColumnName("chillar_incharge_id");
+            entity.Property(e => e.DodhiId).HasColumnName("dodhi_id");
+            entity.Property(e => e.AddedBy).HasColumnName("added_by");
+            entity.Property(e => e.GrossLiters).HasColumnName("gross_liters");
+            entity.Property(e => e.LR).HasColumnName("lr");
+            entity.Property(e => e.Fat).HasColumnName("fat");
+            entity.Property(e => e.NetLiters).HasColumnName("net_liters");
+
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId);
+
+            entity.HasOne(e => e.Chillar)
+                  .WithMany()
+                  .HasForeignKey(e => e.ChillarId);
+
+            entity.HasOne(e => e.ChillarIncharge)
+                  .WithMany()
+                  .HasForeignKey(e => e.ChillarInchargeId);
+
+            entity.HasOne(e => e.Dodhi)
+                  .WithMany()
+                  .HasForeignKey(e => e.DodhiId);
+
+            entity.HasOne(e => e.AddedByUser)
+                  .WithMany()
+                  .HasForeignKey(e => e.AddedBy);
+        });
+
+
+
     }
 }
