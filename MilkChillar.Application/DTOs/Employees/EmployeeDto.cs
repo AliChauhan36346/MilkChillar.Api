@@ -15,6 +15,7 @@ namespace MilkChillar.Application.DTOs.Employees
         public decimal? Salary { get; set; }
         public bool IsActive { get; set; }
         public int? ChillarId { get; set; }
+        public String ChillarName { get; set; } = string.Empty;
     }
 }
 

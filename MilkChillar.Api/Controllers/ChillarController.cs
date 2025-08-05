@@ -3,7 +3,6 @@ using MilkChillar.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using MilkChillar.Application.DTOs.Chillar;
 
 namespace MilkChillar.Api.Controllers
 {
@@ -18,8 +17,18 @@ namespace MilkChillar.Api.Controllers
             _chillarService = chillarService;
         }
 
-        private int GetTenantId() => int.Parse(User.FindFirstValue("tenantId")!);
+        private int GetTenantId()
+        {
+            var tenantIdStr = User.FindFirstValue("tenant_id");
+            if (string.IsNullOrWhiteSpace(tenantIdStr))
+                throw new UnauthorizedAccessException("Tenant ID is missing from the token.");
 
+            return int.Parse(tenantIdStr);
+        }
+
+        /// <summary>
+        /// Get all chillars for the current tenant.
+        /// </summary>
         [HttpGet]
         [Authorize(Policy = "chillar.read")]
         public async Task<IActionResult> GetAll()
@@ -29,6 +38,9 @@ namespace MilkChillar.Api.Controllers
             return Ok(chillars);
         }
 
+        /// <summary>
+        /// Get a single chillar by ID.
+        /// </summary>
         [HttpGet("{id}")]
         [Authorize(Policy = "chillar.read")]
         public async Task<IActionResult> GetById(int id)
@@ -38,6 +50,9 @@ namespace MilkChillar.Api.Controllers
             return chillar == null ? NotFound() : Ok(chillar);
         }
 
+        /// <summary>
+        /// Create a new chillar.
+        /// </summary>
         [HttpPost]
         [Authorize(Policy = "chillar.create")]
         public async Task<IActionResult> Create([FromBody] CreateChillarDto dto)
@@ -47,6 +62,9 @@ namespace MilkChillar.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.ChillarId }, created);
         }
 
+        /// <summary>
+        /// Update an existing chillar.
+        /// </summary>
         [HttpPut("{id}")]
         [Authorize(Policy = "chillar.update")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateChillarDto dto)
@@ -56,6 +74,9 @@ namespace MilkChillar.Api.Controllers
             return updated == null ? NotFound() : Ok(updated);
         }
 
+        /// <summary>
+        /// Delete a chillar.
+        /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Policy = "chillar.delete")]
         public async Task<IActionResult> Delete(int id)

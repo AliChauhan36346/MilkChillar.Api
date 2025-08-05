@@ -22,6 +22,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChillarReceive> ChillarReceives { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<UserPermission> UserPermissions { get; set; }
+    public DbSet<Sales> Sales { get; set; }
+    public DbSet<StockEntry> StockEntries { get; set; }
+
+    public DbSet<Purchase> Purchases { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -284,7 +288,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(c => c.TenantId).HasColumnName("tenant_id");
             entity.Property(c => c.Name).HasColumnName("name").IsRequired();
             entity.Property(c => c.Location).HasColumnName("location");
-            entity.Property(c => c.IsActive).HasColumnName("is_active");
+            entity.Property(c => c.NumberOfChillars).HasColumnName("number_of_chillars");
+            entity.Property(c => c.Capacity).HasColumnName("capacity");
+            
 
             entity.HasOne(c => c.Tenant)
                 .WithMany(t => t.Chillars)
@@ -327,6 +333,143 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.AddedByUser)
                   .WithMany()
                   .HasForeignKey(e => e.AddedBy);
+        });
+
+        modelBuilder.Entity<Sales>(entity =>
+        {
+            entity.ToTable("sales");
+
+            entity.HasKey(e => e.SaleId);
+            entity.Property(e => e.SaleId).HasColumnName("sale_id");
+
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Date).HasColumnName("date");
+
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.RevenueAccountId).HasColumnName("revenue_account_id");
+            entity.Property(e => e.ChillarId).HasColumnName("chillar_id");
+            entity.Property(e => e.AddedBy).HasColumnName("added_by");
+
+            entity.Property(e => e.GrossLiters).HasColumnName("gross_liters");
+            entity.Property(e => e.LR).HasColumnName("lr");
+            entity.Property(e => e.Fat).HasColumnName("fat");
+            entity.Property(e => e.NetLiters).HasColumnName("net_liters");
+            entity.Property(e => e.Rate).HasColumnName("rate");
+
+            entity.Property(e => e.AmountReceived).HasColumnName("amount_received");
+            entity.Property(e => e.Balance).HasColumnName("balance");
+
+            // TotalAmount is a computed property in C#; not mapped by default
+            entity.Ignore(e => e.TotalAmount);
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId);
+
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId);
+
+            entity.HasOne(e => e.RevenueAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.RevenueAccountId);
+
+            entity.HasOne(e => e.Chillar)
+                  .WithMany()
+                  .HasForeignKey(e => e.ChillarId);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.AddedBy);
+        });
+
+        //stockEntry
+        modelBuilder.Entity<StockEntry>(entity =>
+        {
+            entity.ToTable("stock_entry");
+
+            entity.HasKey(e => e.StockEntryId);
+            entity.Property(e => e.StockEntryId).HasColumnName("stock_entry_id");
+
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.ChillarId).HasColumnName("chillar_id");
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.TimeOfDay).HasColumnName("time_of_day").HasMaxLength(10);
+            entity.Property(e => e.TheoreticalLiters).HasColumnName("theoretical_liters").HasPrecision(10, 2);
+            entity.Property(e => e.MeasuredLiters).HasColumnName("measured_liters").HasPrecision(10, 2);
+
+            // Computed by DB
+            entity.Property(e => e.Variance)
+                .HasColumnName("variance")
+                .HasPrecision(10, 2)
+                .ValueGeneratedOnAddOrUpdate()
+                .Metadata.SetAfterSaveBehavior(Microsoft.EntityFrameworkCore.Metadata.PropertySaveBehavior.Ignore);
+
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+
+            // Unique constraint: tenant_id + chillar_id + date
+            entity.HasIndex(e => new { e.TenantId, e.ChillarId, e.Date })
+                .IsUnique()
+                .HasDatabaseName("uq_stock_entry_day");
+
+            // Relationships (no reverse navs)
+            entity.HasOne(e => e.Chillar)
+                .WithMany() // No StockEntries collection in Chillar
+                .HasForeignKey(e => e.ChillarId)
+                .HasConstraintName("fk_se_chillar")
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany() // No reverse nav in User
+                .HasForeignKey(e => e.CreatedBy)
+                .HasConstraintName("fk_se_user")
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany() // No reverse nav in Tenant
+                .HasForeignKey(e => e.TenantId)
+                .HasConstraintName("fk_se_tenant")
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+
+        modelBuilder.Entity<Purchase>(entity =>
+        {
+            entity.ToTable("purchase");
+            entity.HasKey(e => e.PurchaseId);
+
+            entity.Property(e => e.PurchaseId).HasColumnName("purchase_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Date).HasColumnName("date");
+            entity.Property(e => e.TimeOfDay).HasColumnName("time_of_day");
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.ExpenseAccountId).HasColumnName("expense_account_id");
+            entity.Property(e => e.DodhiId).HasColumnName("dodhi_id");
+            entity.Property(e => e.GrossLiters).HasColumnName("gross_liters");
+            entity.Property(e => e.Rate).HasColumnName("rate");
+            entity.Property(e => e.Balance).HasColumnName("balance");
+
+            // TotalAmount is a computed property in C#; not mapped by default (it's computed in DB)
+            entity.Ignore(e => e.TotalAmount);
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId);
+
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId);
+
+            entity.HasOne(e => e.ExpenseAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.ExpenseAccountId);
+
+            entity.HasOne(e => e.Dodhi)
+                  .WithMany()
+                  .HasForeignKey(e => e.DodhiId);
         });
 
 

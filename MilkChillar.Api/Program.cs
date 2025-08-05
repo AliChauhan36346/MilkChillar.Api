@@ -73,11 +73,19 @@ builder.Services.AddAuthorization(options =>
     "rolepermission.create", "rolepermission.read", "rolepermission.delete",
     "userpermission.create", "userpermission.read", "userpermission.delete",
     "permission.read",
-
-    // ✅ New permissions
     "chillar.create", "chillar.read", "chillar.update", "chillar.delete",
-    "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete"
+    "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete",
+    
+    // Added Sales Permissions
+    "sales.create", "sales.read", "sales.update", "sales.delete",
+
+    // Added Purchase Permissions
+    "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
+
+    // Added Stock Permissions
+    "stock.create", "stock.read", "stock.update", "stock.delete"
 };
+
 
 
 
@@ -104,6 +112,8 @@ builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
 builder.Services.AddScoped<IRoleService,RoleService>();
 builder.Services.AddScoped<IChillarReceiveService,ChillarReceiveService>();
 builder.Services.AddScoped<IChillarService,ChillarService>();
+builder.Services.AddScoped<ISaleService,SalesService>();
+builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 
 
 builder.Services.AddControllers();

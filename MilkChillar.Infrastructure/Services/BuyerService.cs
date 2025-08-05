@@ -143,55 +143,74 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<PaginatedResult<BuyerDto>> GetBuyersAsync(BuyerQueryParameters query)
         {
-            var buyersQuery = _context.Buyers
-                .Include(b => b.Account)
-                .Where(b => b.TenantId == query.TenantId)
-                .AsQueryable();
+            var buyersQuery = from account in _context.Accounts
+                              where account.TenantId == query.TenantId &&
+                                    account.AccountCode.StartsWith("100")
+                              join buyer in _context.Buyers
+                                  on account.AccountId equals buyer.AccountId into buyerJoin
+                              from buyer in buyerJoin.DefaultIfEmpty() // LEFT JOIN
+                              select new
+                              {
+                                  account.AccountId,
+                                  account.TenantId,
+                                  account.AccountCode,
+                                  account.FullCode,
+                                  account.Name,
+                                  BuyerId = (int?)buyer.BuyerId,
+                                  Rate = (decimal?)buyer.Rate,
+                                  KhataNumber = buyer.KhataNumber,
+                                  CreditLimit = (decimal?)buyer.CreditLimit,
+                                  Address = buyer.Address,
+                                  IsActive = (bool?)buyer.IsActive
+                              };
 
+            // 🔍 Apply search filter
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
-                buyersQuery = buyersQuery.Where(b =>
-                    b.FullName.Contains(query.Search) ||
-                    b.KhataNumber.Contains(query.Search) ||
-                    (b.Address != null && b.Address.Contains(query.Search))
+                buyersQuery = buyersQuery.Where(x =>
+                    x.Name.Contains(query.Search) ||
+                    x.KhataNumber.Contains(query.Search) ||
+                    (x.Address != null && x.Address.Contains(query.Search))
                 );
             }
 
+            // ✅ Filter by IsActive if specified
             if (query.IsActive.HasValue)
             {
-                buyersQuery = buyersQuery.Where(b => b.IsActive == query.IsActive);
+                buyersQuery = buyersQuery.Where(x => x.IsActive == query.IsActive);
             }
 
             var totalCount = await buyersQuery.CountAsync();
             var skip = (query.PageNumber - 1) * query.PageSize;
 
-            var buyers = await buyersQuery
+            var items = await buyersQuery
+                .OrderBy(x => x.FullCode)
                 .Skip(skip)
                 .Take(query.PageSize)
                 .ToListAsync();
 
-            var buyerDtos = buyers.Select(b => new BuyerDto
+            var resultDtos = items.Select(x => new BuyerDto
             {
-                BuyerId = b.BuyerId,
-                TenantId = b.TenantId,
-                AccountId = b.AccountId,
-                //FullName = b.FullName,
-                Rate = b.Rate,
-                KhataNumber = b.KhataNumber,
-                CreditLimit = b.CreditLimit,
-                Address = b.Address,
-                IsActive = b.IsActive,
-                AccountCode = b.Account?.AccountCode,
-                AccountName = b.Account?.Name
+                BuyerId = x.BuyerId ?? 0,
+                TenantId = x.TenantId,
+                AccountId = x.AccountId,
+                AccountCode = x.AccountCode,
+                AccountName = x.Name,
+                Rate = x.Rate ?? 0,
+                KhataNumber = x.KhataNumber ?? "",
+                CreditLimit = x.CreditLimit ?? 0,
+                Address = x.Address,
+                IsActive = x.IsActive ?? false
             }).ToList();
 
             return new PaginatedResult<BuyerDto>
             {
-                Items = buyerDtos,
+                Items = resultDtos,
                 TotalCount = totalCount,
                 PageNumber = query.PageNumber,
                 PageSize = query.PageSize
             };
         }
+
     }
 }

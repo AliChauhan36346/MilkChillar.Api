@@ -21,6 +21,7 @@ namespace MilkChillar.Infrastructure.Services
         {
             return await _dbContext.Employees
                 .Where(e => e.TenantId == tenantId)
+                .Include(e => e.Chillar)
                 .Select(e => new EmployeeDto
                 {
                     EmployeeId = e.EmployeeId,
@@ -28,14 +29,18 @@ namespace MilkChillar.Infrastructure.Services
                     Designation = e.Designation,
                     ContactNumber = e.ContactNumber,
                     Salary = e.Salary,
-                    IsActive = e.IsActive
+                    IsActive = e.IsActive,
+                    ChillarId = e.ChillarId,
+                    ChillarName = e.Chillar != null ? e.Chillar.Name : string.Empty
                 })
                 .ToListAsync();
         }
 
+
         public async Task<PaginatedResult<EmployeeDto>> GetEmployeesAsync(EmployeeQueryParameters parameters)
         {
             var query = _dbContext.Employees
+                .Include(e => e.Chillar)
                 .Where(e => e.TenantId == parameters.TenantId);
 
             if (!string.IsNullOrWhiteSpace(parameters.Search))
@@ -63,7 +68,9 @@ namespace MilkChillar.Infrastructure.Services
                     Designation = e.Designation,
                     ContactNumber = e.ContactNumber,
                     Salary = e.Salary,
-                    IsActive = e.IsActive
+                    IsActive = e.IsActive,
+                    ChillarId = e.ChillarId,
+                    ChillarName = e.Chillar != null ? e.Chillar.Name : string.Empty
                 })
                 .ToListAsync();
 
@@ -76,9 +83,11 @@ namespace MilkChillar.Infrastructure.Services
             };
         }
 
+
         public async Task<EmployeeDto?> GetByIdAsync(int id, int tenantId)
         {
             var employee = await _dbContext.Employees
+                .Include(e => e.Chillar)
                 .FirstOrDefaultAsync(e => e.EmployeeId == id && e.TenantId == tenantId);
 
             if (employee == null) return null;
@@ -91,13 +100,27 @@ namespace MilkChillar.Infrastructure.Services
                 ContactNumber = employee.ContactNumber,
                 Salary = employee.Salary,
                 IsActive = employee.IsActive,
-                ChillarId = employee.ChillarId
-
+                ChillarId = employee.ChillarId,
+                ChillarName = employee.Chillar != null ? employee.Chillar.Name : string.Empty
             };
         }
 
+
         public async Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto, int tenantId)
         {
+            if (dto.Designation.ToLower() == "chillarincharge" && dto.ChillarId.HasValue)
+            {
+                bool inchargeExists = await _dbContext.Employees
+                    .AnyAsync(e =>
+                        e.TenantId == tenantId &&
+                        e.Designation.ToLower() == "chillarincharge" &&
+                        e.ChillarId == dto.ChillarId);
+
+                if (inchargeExists)
+                    throw new InvalidOperationException("This chillar already has a chillar incharge assigned.");
+            }
+
+
             var employee = new Employee
             {
                 FullName = dto.FullName,

@@ -14,6 +14,7 @@ namespace MilkChillar.Application.DTOs.ChillarReceive
         public string ChillarName { get; set; } = default!;
         public string InchargeName { get; set; } = default!;
         public string DodhiName { get; set; } = default!;
+        public int dodhiID { get; set; }
         public decimal GrossLiters { get; set; }
         public decimal? LR { get; set; }
         public decimal? Fat { get; set; }

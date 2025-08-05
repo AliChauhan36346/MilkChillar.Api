@@ -38,7 +38,7 @@ namespace MilkChillar.Infrastructure.Services
                 .Select(cr => new ChillarReceiveDto
                 {
                     ReceiveId = cr.ReceiveId,
-                    Date = DateOnly.FromDateTime(cr.Date),
+                    Date = cr.Date,
                     TimeOfDay = cr.TimeOfDay,
                     ChillarName = cr.Chillar.Name,
                     InchargeName = cr.ChillarIncharge.FullName,
@@ -46,7 +46,7 @@ namespace MilkChillar.Infrastructure.Services
                     GrossLiters = cr.GrossLiters,
                     LR = cr.LR,
                     Fat = cr.Fat,
-                    NetLiters = cr.NetLiters        
+                    NetLiters = cr.NetLiters
                 })
                 .ToListAsync();
 
@@ -66,7 +66,7 @@ namespace MilkChillar.Infrastructure.Services
                 .Select(cr => new ChillarReceiveDto
                 {
                     ReceiveId = cr.ReceiveId,
-                    Date = DateOnly.FromDateTime(cr.Date),
+                    Date = cr.Date,
                     TimeOfDay = cr.TimeOfDay,
                     ChillarName = cr.Chillar.Name,
                     InchargeName = cr.ChillarIncharge.FullName,
@@ -86,7 +86,7 @@ namespace MilkChillar.Infrastructure.Services
             var receive = new ChillarReceive
             {
                 TenantId = tenantId,
-                Date = dto.Date.ToDateTime(TimeOnly.MinValue),
+                Date = dto.Date,
                 TimeOfDay = dto.TimeOfDay,
                 ChillarId = dto.ChillarId,
                 ChillarInchargeId = dto.ChillarInchargeId,
@@ -130,7 +130,7 @@ namespace MilkChillar.Infrastructure.Services
 
             if (receive == null) return null;
 
-            receive.Date = dto.Date.ToDateTime(TimeOnly.MinValue);
+            receive.Date = dto.Date;
             receive.TimeOfDay = dto.TimeOfDay;
             receive.ChillarId = dto.ChillarId;
             receive.ChillarInchargeId = dto.ChillarInchargeId;
@@ -145,7 +145,7 @@ namespace MilkChillar.Infrastructure.Services
             return new ChillarReceiveDto
             {
                 ReceiveId = receive.ReceiveId,
-                Date = DateOnly.FromDateTime(receive.Date),
+                Date = receive.Date,
                 TimeOfDay = receive.TimeOfDay,
                 ChillarName = receive.Chillar.Name,
                 InchargeName = receive.ChillarIncharge.FullName,
@@ -181,7 +181,7 @@ namespace MilkChillar.Infrastructure.Services
                 .Select(cr => new ChillarReceiveDto
                 {
                     ReceiveId = cr.ReceiveId,
-                    Date = DateOnly.FromDateTime(cr.Date),
+                    Date = cr.Date,
                     TimeOfDay = cr.TimeOfDay,
                     ChillarName = cr.Chillar.Name,
                     InchargeName = cr.ChillarIncharge.FullName,
@@ -221,7 +221,7 @@ namespace MilkChillar.Infrastructure.Services
             // Fetch all entries already made by this incharge for the selected chillar
             var added = await _dbContext.ChillarReceives
                 .Where(r => r.TenantId == tenantId &&
-                            r.Date.Date == date.ToDateTime(TimeOnly.MinValue).Date &&
+                            r.Date == date &&
                             r.TimeOfDay.ToLower() == timeOfDay &&
                             r.ChillarId == chillarId &&
                             r.ChillarInchargeId == chillarInchargeId)
@@ -231,10 +231,11 @@ namespace MilkChillar.Infrastructure.Services
                 .Select(r => new ChillarReceiveDto
                 {
                     ReceiveId = r.ReceiveId,
-                    Date = DateOnly.FromDateTime(r.Date),
+                    Date = r.Date,
                     TimeOfDay = r.TimeOfDay,
                     ChillarName = r.Chillar.Name,
                     InchargeName = r.ChillarIncharge.FullName,
+                    dodhiID = r.Dodhi.EmployeeId,
                     DodhiName = r.Dodhi.FullName,
                     GrossLiters = r.GrossLiters,
                     LR = r.LR,
@@ -269,8 +270,6 @@ namespace MilkChillar.Infrastructure.Services
                 AddedDodhis = added
             };
         }
-
-
-
     }
+
 }

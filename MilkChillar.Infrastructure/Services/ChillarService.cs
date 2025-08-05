@@ -25,7 +25,8 @@ namespace MilkChillar.Infrastructure.Services
                     ChillarId = c.ChillarId,
                     Name = c.Name,
                     Location = c.Location,
-                    IsActive = c.IsActive
+                    NumberOfChillars = c.NumberOfChillars,    // ✅ Add
+                    Capacity = c.Capacity                     // ✅ Add
                 }).ToListAsync();
         }
 
@@ -41,7 +42,8 @@ namespace MilkChillar.Infrastructure.Services
                 ChillarId = chillar.ChillarId,
                 Name = chillar.Name,
                 Location = chillar.Location,
-                IsActive = chillar.IsActive
+                NumberOfChillars = chillar.NumberOfChillars,   // ✅ Add
+                Capacity = chillar.Capacity                    // ✅ Add
             };
         }
 
@@ -52,8 +54,10 @@ namespace MilkChillar.Infrastructure.Services
                 TenantId = tenantId,
                 Name = dto.Name,
                 Location = dto.Location,
-                IsActive = dto.IsActive
+                NumberOfChillars = dto.NumberOfChillars,   // ✅ Add
+                Capacity = dto.Capacity                    // ✅ Add
             };
+
 
             _dbContext.Chillars.Add(chillar);
             await _dbContext.SaveChangesAsync();
@@ -63,8 +67,10 @@ namespace MilkChillar.Infrastructure.Services
                 ChillarId = chillar.ChillarId,
                 Name = chillar.Name,
                 Location = chillar.Location,
-                IsActive = chillar.IsActive
+                NumberOfChillars = chillar.NumberOfChillars,   // ✅ Add
+                Capacity = chillar.Capacity                    // ✅ Add
             };
+
         }
 
         public async Task<ChillarDto?> UpdateAsync(int chillarId, UpdateChillarDto dto, int tenantId)
@@ -76,7 +82,10 @@ namespace MilkChillar.Infrastructure.Services
 
             chillar.Name = dto.Name;
             chillar.Location = dto.Location;
-            chillar.IsActive = dto.IsActive;
+            chillar.NumberOfChillars = dto.NumberOfChillars;   // ✅ Add
+            chillar.Capacity = dto.Capacity;                   // ✅ Add
+
+
 
             await _dbContext.SaveChangesAsync();
 
@@ -85,8 +94,10 @@ namespace MilkChillar.Infrastructure.Services
                 ChillarId = chillar.ChillarId,
                 Name = chillar.Name,
                 Location = chillar.Location,
-                IsActive = chillar.IsActive
+                NumberOfChillars = chillar.NumberOfChillars,   // ✅ Add
+                Capacity = chillar.Capacity                    // ✅ Add
             };
+
         }
 
         public async Task<bool> DeleteAsync(int chillarId, int tenantId)

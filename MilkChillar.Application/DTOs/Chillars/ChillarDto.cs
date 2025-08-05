@@ -11,6 +11,9 @@ namespace MilkChillar.Application.DTOs.Chillar
         public int ChillarId { get; set; }
         public string Name { get; set; } = default!;
         public string? Location { get; set; }
-        public bool IsActive { get; set; }
+
+        public int NumberOfChillars { get; set; }   // ✅ Add
+        public decimal Capacity { get; set; }       // ✅ Add
     }
+
 }

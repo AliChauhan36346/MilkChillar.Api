@@ -10,7 +10,7 @@ public class ChillarReceive
 {
     public int ReceiveId { get; set; }
     public int TenantId { get; set; }
-    public DateTime Date { get; set; }
+    public DateOnly Date { get; set; }
     public string TimeOfDay { get; set; } = default!; // "morning" or "evening"
 
     public int ChillarId { get; set; }

@@ -81,5 +81,14 @@ namespace MilkChillar.Api.Controllers
             return Ok(chart);
         }
 
+        [HttpGet("sub/by-main-code")]
+        [Authorize(Policy = "subaccount.read")]
+        public async Task<IActionResult> GetSubAccountsByMainCode([FromQuery] string mainAccountCode)
+        {
+            var result = await _accountService.GetSubAccountsByMainAccountCodeAsync(mainAccountCode);
+            return Ok(result);
+        }
+
+
     }
 }

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace MilkChillar.Infrastructure.Services
 {
@@ -15,18 +16,39 @@ namespace MilkChillar.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
 
-        public AccountService(ApplicationDbContext context)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
+        public AccountService(ApplicationDbContext context, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
+            _httpContextAccessor = httpContextAccessor;
         }
+
+        private int GetTenantIdFromToken()
+        {
+            var claim = _httpContextAccessor.HttpContext?.User?.Claims
+                .FirstOrDefault(c => c.Type.Equals("tenant_id", StringComparison.OrdinalIgnoreCase));
+
+            if (claim == null || string.IsNullOrWhiteSpace(claim.Value))
+                throw new UnauthorizedAccessException("Tenant ID not found in token claims.");
+
+            if (!int.TryParse(claim.Value, out var tenantId))
+                throw new UnauthorizedAccessException("Invalid Tenant ID in token.");
+
+            return tenantId;
+        }
+
+
 
         public async Task<int> CreateMainAccountAsync(CreateMainAccountRequest request)
         {
-            var nextCode = await GenerateNextMainAccountCode(request.TenantId, request.FinancialStatementComponent);
+            int tenantId = GetTenantIdFromToken();
+
+            var nextCode = await GenerateNextMainAccountCode(tenantId, request.FinancialStatementComponent);
 
             var mainAccount = new MainAccount
             {
-                TenantId = request.TenantId,
+                TenantId = tenantId,
                 Name = request.Name,
                 FinancialStatementComponent = request.FinancialStatementComponent,
                 MainAccountCode = nextCode
@@ -37,18 +59,21 @@ namespace MilkChillar.Infrastructure.Services
             return mainAccount.MainAccountId;
         }
 
+
         public async Task<int> CreateSubAccountAsync(CreateSubAccountRequest request)
         {
+            int tenantId = GetTenantIdFromToken();
+
             var mainAccount = await _context.MainAccounts
-                .FirstOrDefaultAsync(m => m.MainAccountId == request.MainAccountId && m.TenantId == request.TenantId);
+                .FirstOrDefaultAsync(m => m.MainAccountId == request.MainAccountId && m.TenantId == tenantId);
 
             if (mainAccount == null) throw new Exception("Main account not found.");
 
-            var nextCode = await GenerateNextSubAccountCode(request.TenantId, request.MainAccountId);
+            var nextCode = await GenerateNextSubAccountCode(tenantId, request.MainAccountId);
 
             var subAccount = new SubAccount
             {
-                TenantId = request.TenantId,
+                TenantId = tenantId,
                 MainAccountId = request.MainAccountId,
                 Name = request.Name,
                 SubAccountCode = nextCode
@@ -59,8 +84,11 @@ namespace MilkChillar.Infrastructure.Services
             return subAccount.SubAccountId;
         }
 
+
         public async Task<int> CreateAccountAsync(CreateAccountRequest request)
         {
+            int tenantId = GetTenantIdFromToken();
+
             var subAccount = await _context.SubAccounts
                 .Include(sa => sa.MainAccount)
                 .FirstOrDefaultAsync(sa => sa.SubAccountId == request.SubAccountId && sa.TenantId == request.TenantId);
@@ -73,7 +101,7 @@ namespace MilkChillar.Infrastructure.Services
 
             var account = new Account
             {
-                TenantId = request.TenantId,
+                TenantId = tenantId,
                 SubAccountId = request.SubAccountId,
                 Name = request.Name,
                 AccountCode = nextCode,
@@ -86,30 +114,54 @@ namespace MilkChillar.Infrastructure.Services
         }
 
         // 🔢 Helper methods
-        private async Task<string> GenerateNextMainAccountCode(int tenantId, string component)
+        private async Task<string> GenerateNextMainAccountCode(int _, string component)
         {
-            var prefix = component.ToLower() switch
+            int tenantId= GetTenantIdFromToken();
+            var (baseCode, rangeStart, rangeEnd) = component.ToLower() switch
             {
-                "assets" => "1",
-                "liabilities" => "2",
-                "equity" => "3",
-                "revenue" => "4",
-                "expenses" => "5",
-                _ => "9"
+                "currentassets" => (100, 100, 199),
+                "noncurrentassets" => (100, 100, 199),
+                "currentliabilities" => (200, 200, 299),
+                "noncurrentliabilities" => (200, 200, 299),
+                "capitalandreserves" => (300, 300, 399),
+                "revenue" => (400, 400, 499),
+                "costofsales" => (500, 500, 599),
+                "operatingexpenses" => (600, 600, 699),
+                "financialexpenses" => (600, 600, 699),
+                _ => (999, 999, 999)
             };
 
-            var maxCode = await _context.MainAccounts
-                .Where(m => m.TenantId == tenantId && m.MainAccountCode.StartsWith(prefix))
-                .Select(m => (int?)Convert.ToInt32(m.MainAccountCode))
-                .MaxAsync() ?? int.Parse(prefix + "00");
+            // Get the maximum code in the range
+            var maxCodeQuery = await _context.MainAccounts
+                .Where(m => m.TenantId == tenantId)
+                .Select(m => m.MainAccountCode)
+                .Where(code => code != null)
+                .ToListAsync();
 
-            return (maxCode + 1).ToString("D3");
+            int? maxCode = maxCodeQuery
+                .Where(code => int.TryParse(code, out int codeInt) &&
+                              codeInt >= rangeStart &&
+                              codeInt <= rangeEnd)
+                .Select(code => int.Parse(code))
+                .Cast<int?>()
+                .Max();
+
+            int nextCode = maxCode.HasValue ? maxCode.Value + 10 : baseCode;
+
+            // Safety check
+            if (nextCode > rangeEnd)
+            {
+                throw new InvalidOperationException($"No available codes in range {rangeStart}-{rangeEnd} for component {component}");
+            }
+
+            return nextCode.ToString();
         }
 
 
         // Generate next SubAccountCode per tenant+mainAccount
-        private async Task<string> GenerateNextSubAccountCode(int tenantId, int mainAccountId)
+        private async Task<string> GenerateNextSubAccountCode(int _, int mainAccountId)
         {
+            int tenantId = GetTenantIdFromToken();
             var mainAccount = await _context.MainAccounts.FindAsync(mainAccountId);
             if (mainAccount == null)
                 throw new Exception("Main account not found");
@@ -127,8 +179,10 @@ namespace MilkChillar.Infrastructure.Services
 
 
         // Generate next AccountCode per tenant+subAccount
-        private async Task<string> GenerateNextAccountCode(int tenantId, int subAccountId)
+        private async Task<string> GenerateNextAccountCode(int _, int subAccountId)
         {
+            int tenantId = GetTenantIdFromToken();
+
             var subAccount = await _context.SubAccounts
                 .Include(sa => sa.MainAccount)
                 .FirstOrDefaultAsync(sa => sa.SubAccountId == subAccountId && sa.TenantId == tenantId);
@@ -144,13 +198,15 @@ namespace MilkChillar.Infrastructure.Services
                 .MaxAsync() ?? 0;
 
             var next = maxAcc + 1;
-            var newCode = baseCode + next.ToString("D2");
+            var newCode = baseCode + next.ToString("D3"); // ← change from D2 to D3
 
             return newCode;
         }
 
-        public async Task<List<MainAccountDto>> GetMainAccountsAsync(int tenantId)
+
+        public async Task<List<MainAccountDto>> GetMainAccountsAsync(int _)//parameter just for compatibility as updated in hurry
         {
+            int tenantId = GetTenantIdFromToken();
             return await _context.MainAccounts
                 .Where(m => m.TenantId == tenantId)
                 .Select(m => new MainAccountDto
@@ -163,8 +219,11 @@ namespace MilkChillar.Infrastructure.Services
                 .ToListAsync();
         }
 
-        public async Task<List<SubAccountDto>> GetSubAccountsAsync(int tenantId, int mainAccountId)
+
+        public async Task<List<SubAccountDto>> GetSubAccountsAsync(int _, int mainAccountId)
         {
+
+            int tenantId = GetTenantIdFromToken();
             return await _context.SubAccounts
                 .Where(s => s.TenantId == tenantId && s.MainAccountId == mainAccountId)
                 .Select(s => new SubAccountDto
@@ -177,8 +236,27 @@ namespace MilkChillar.Infrastructure.Services
                 .ToListAsync();
         }
 
-        public async Task<List<AccountDto>> GetAccountsAsync(int tenantId, int subAccountId)
+        public async Task<List<SubAccountDto>> GetSubAccountsByMainAccountCodeAsync(string mainAccountCode)
         {
+            int tenantId = GetTenantIdFromToken();
+
+            return await _context.SubAccounts
+                .Where(s => s.TenantId == tenantId && s.SubAccountCode.StartsWith(mainAccountCode))
+                .Select(s => new SubAccountDto
+                {
+                    SubAccountId = s.SubAccountId,
+                    Name = s.Name,
+                    SubAccountCode = s.SubAccountCode,
+                    MainAccountId = s.MainAccountId
+                })
+                .ToListAsync();
+        }
+
+
+        public async Task<List<AccountDto>> GetAccountsAsync(int _, int subAccountId)
+        {
+
+            int tenantId = GetTenantIdFromToken();
             return await _context.Accounts
                 .Where(a => a.TenantId == tenantId && a.SubAccountId == subAccountId)
                 .Select(a => new AccountDto
@@ -192,8 +270,9 @@ namespace MilkChillar.Infrastructure.Services
                 .ToListAsync();
         }
 
-        public async Task<List<ChartOfAccountDto>> GetChartOfAccountsAsync(int tenantId)
+        public async Task<List<ChartOfAccountDto>> GetChartOfAccountsAsync(int _)
         {
+            int tenantId = GetTenantIdFromToken();
             var mainAccounts = await _context.MainAccounts
                 .Where(m => m.TenantId == tenantId)
                 .Include(m => m.SubAccounts)
