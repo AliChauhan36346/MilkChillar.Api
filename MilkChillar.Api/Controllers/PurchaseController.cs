@@ -33,15 +33,18 @@ namespace MilkChillar.Api.Controllers
         [Authorize(Policy = "purchase.read")]
         public async Task<ActionResult<PurchaseMetadataDto>> GetPurchaseMetadata([FromQuery] DateOnly date, [FromQuery] string timeOfDay)
         {
-            if (string.IsNullOrWhiteSpace(timeOfDay) || (timeOfDay != "morning" && timeOfDay != "evening"))
+            // Allow "both" in addition to "morning" and "evening"
+            if (string.IsNullOrWhiteSpace(timeOfDay) || (timeOfDay != "morning" && timeOfDay != "evening" && timeOfDay != "both"))
             {
-                return BadRequest("TimeOfDay must be either 'morning' or 'evening'");
+                return BadRequest("TimeOfDay must be 'morning', 'evening', or 'both'");
             }
 
             var tenantId = GetTenantId();
-            var result = await _purchaseService.GetPurchaseMetadataAsync(date, timeOfDay, tenantId);
+            var userId = GetUserId(); // Add this line
+            var result = await _purchaseService.GetPurchaseMetadataAsync(date, timeOfDay, tenantId, userId);
             return Ok(result);
         }
+
 
         [HttpGet]
         [Authorize(Policy = "purchase.read")]

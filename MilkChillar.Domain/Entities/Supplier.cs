@@ -22,9 +22,6 @@ namespace MilkChillar.Domain.Entities
         public bool GiveCreditOnParchi { get; set; }
         public bool IsActive { get; set; }
 
-        //public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        // Navigation properties (if you will use them)
         public Tenant Tenant { get; set; } = null!;
         public Account Account { get; set; } = null!;
         public Employee? Dodhi { get; set; }

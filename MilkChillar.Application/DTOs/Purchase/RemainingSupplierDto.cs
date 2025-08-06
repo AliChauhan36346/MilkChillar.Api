@@ -12,6 +12,6 @@ namespace MilkChillar.Application.DTOs.Purchase
         public string AccountName { get; set; } = default!;
         public string AccountCode { get; set; } = default!;
         public decimal Rate { get; set; }
-        public int? DodhiId { get; set; }
+        public string TimeOfDay { get; set; } = default!;
     }
 }

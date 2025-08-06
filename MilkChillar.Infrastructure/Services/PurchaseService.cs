@@ -187,39 +187,55 @@ namespace MilkChillar.Infrastructure.Services
             };
         }
 
-        public async Task<PurchaseMetadataDto> GetPurchaseMetadataAsync(DateOnly date, string timeOfDay, int tenantId)
+        public async Task<int?> GetMyDodhiIdAsync(int userId)
         {
-            // Get all suppliers with their accounts
+            var user = await _context.Users
+                .Include(u => u.Employee)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            var employee = user?.Employee;
+
+            if (employee == null || employee.Designation.ToLower() != "dodhi")
+                return null;
+
+            return employee.EmployeeId;
+        }
+
+        public async Task<PurchaseMetadataDto> GetPurchaseMetadataAsync(DateOnly date, string timeOfDay, int tenantId, int userId)
+        {
+            var dodhiId = await GetMyDodhiIdAsync(userId);
+            if (dodhiId == null)
+                return new PurchaseMetadataDto();
+
+            // Get suppliers assigned to this dodhi
             var allSuppliers = await _context.Suppliers
                 .Include(s => s.Account)
-                .Where(s => s.TenantId == tenantId && s.Account.SubAccount.MainAccount.Name.ToLower() == "suppliers")
+                .Where(s => s.TenantId == tenantId &&
+                           s.Account.AccountCode.StartsWith("200") &&
+                           s.DodhiId == dodhiId &&
+                           s.IsActive) // Add IsActive filter
                 .ToListAsync();
 
-            // Get expense accounts
-            var expenseAccounts = await (
-                from a in _context.Accounts
-                join sa in _context.SubAccounts on a.SubAccountId equals sa.SubAccountId
-                join ma in _context.MainAccounts on sa.MainAccountId equals ma.MainAccountId
-                where a.TenantId == tenantId && ma.FinancialStatementComponent.ToLower() == "expense"
-                select new ExpenseAccountDto
+            // Get expense accounts by account code starting with "500"
+            var expenseAccounts = await _context.Accounts
+                .Where(a => a.TenantId == tenantId && a.AccountCode.StartsWith("500"))
+                .Select(a => new ExpenseAccountDto
                 {
                     AccountId = a.AccountId,
                     AccountCode = a.AccountCode,
                     AccountName = a.Name
                 }).ToListAsync();
 
-            // Get all dodhis (employees with Dodhi designation)
-            var dodhis = await _context.Employees
-                .Where(e => e.TenantId == tenantId && e.Designation.ToLower() == "dodhi")
-                .Select(e => new DodhiDto
-                {
-                    EmployeeId = e.EmployeeId,
-                    FullName = e.FullName
-                }).ToListAsync();
-
-            // Get added purchases for this date and time
+            // Get added purchases - handle "both" case and filter by dodhi
             var addedQuery = _context.Purchases
-                .Where(p => p.TenantId == tenantId && p.Date == date && p.TimeOfDay == timeOfDay);
+                .Where(p => p.TenantId == tenantId &&
+                           p.Date == date &&
+                           p.DodhiId == dodhiId);
+
+            if (timeOfDay != "both")
+            {
+                addedQuery = addedQuery.Where(p => p.TimeOfDay == timeOfDay);
+            }
 
             var added = await addedQuery
                 .Include(p => p.Account)
@@ -243,25 +259,72 @@ namespace MilkChillar.Infrastructure.Services
                 Balance = p.Balance
             }).ToList();
 
-            var addedAccountIds = added.Select(p => p.AccountId).ToHashSet();
+            // Handle remaining suppliers logic for "both" vs specific time
+            List<RemainingSupplierDto> remainingSuppliers;
 
-            var remainingSuppliers = allSuppliers
-                .Where(s => !addedAccountIds.Contains(s.AccountId))
-                .Select(s => new RemainingSupplierDto
+            if (timeOfDay == "both")
+            {
+                // For "both", show double entries (morning & evening) for suppliers not added for either time
+                var addedAccountTimeMap = added
+                    .GroupBy(p => p.AccountId)
+                    .ToDictionary(g => g.Key, g => g.Select(p => p.TimeOfDay).ToHashSet());
+
+                remainingSuppliers = new List<RemainingSupplierDto>();
+
+                foreach (var supplier in allSuppliers)
                 {
-                    AccountId = s.AccountId,
-                    AccountName = s.Account.Name,
-                    AccountCode = s.Account.AccountCode,
-                    Rate = s.Rate,
-                    DodhiId = s.DodhiId
-                }).ToList();
+                    var addedTimes = addedAccountTimeMap.GetValueOrDefault(supplier.AccountId, new HashSet<string>());
+
+                    // Add morning entry if not added for morning
+                    if (!addedTimes.Contains("morning"))
+                    {
+                        remainingSuppliers.Add(new RemainingSupplierDto
+                        {
+                            AccountId = supplier.AccountId,
+                            AccountName = supplier.Account.Name + " (Morning)",
+                            AccountCode = supplier.Account.AccountCode,
+                            Rate = supplier.Rate,
+                            TimeOfDay = "morning" // Add this field to track which time
+                        });
+                    }
+
+                    // Add evening entry if not added for evening
+                    if (!addedTimes.Contains("evening"))
+                    {
+                        remainingSuppliers.Add(new RemainingSupplierDto
+                        {
+                            AccountId = supplier.AccountId,
+                            AccountName = supplier.Account.Name + " (Evening)",
+                            AccountCode = supplier.Account.AccountCode,
+                            Rate = supplier.Rate,
+                            TimeOfDay = "evening" // Add this field to track which time
+                        });
+                    }
+                }
+            }
+            else
+            {
+                // For specific time, show suppliers not added for that specific time
+                var addedAccountIds = added.Select(p => p.AccountId).ToHashSet();
+
+                remainingSuppliers = allSuppliers
+                    .Where(s => !addedAccountIds.Contains(s.AccountId))
+                    .Select(s => new RemainingSupplierDto
+                    {
+                        AccountId = s.AccountId,
+                        AccountName = s.Account.Name,
+                        AccountCode = s.Account.AccountCode,
+                        Rate = s.Rate,
+                        TimeOfDay = timeOfDay // Add this field
+                    }).ToList();
+            }
 
             return new PurchaseMetadataDto
             {
+                DodhiId = dodhiId.Value,
                 AddedPurchases = addedDtos,
                 RemainingSuppliers = remainingSuppliers,
-                ExpenseAccounts = expenseAccounts,
-                Dodhis = dodhis
+                ExpenseAccounts = expenseAccounts
             };
         }
     }
