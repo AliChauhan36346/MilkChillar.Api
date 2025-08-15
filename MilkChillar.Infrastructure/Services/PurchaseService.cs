@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.Purchase;
+﻿    using MilkChillar.Application.DTOs.Purchase;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Application.Responses;
@@ -20,13 +20,15 @@ namespace MilkChillar.Infrastructure.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<PaginatedResult<PurchaseDto>> GetPaginatedAsync(PurchaseQueryParameters parameters)
+        public async Task<PaginatedResult<PurchaseDto>> GetPaginatedAsync(PurchaseQueryParameters parameters, int tenantId)
         {
+
+
             var query = _context.Purchases
                 .Include(p => p.Account)
                 .Include(p => p.ExpenseAccount)
                 .Include(p => p.Dodhi)
-                .Where(p => p.TenantId == parameters.TenantId);
+                .Where(p => p.TenantId == tenantId);
 
             // Apply filters
             if (parameters.FromDate.HasValue)
@@ -281,7 +283,7 @@ namespace MilkChillar.Infrastructure.Services
                         remainingSuppliers.Add(new RemainingSupplierDto
                         {
                             AccountId = supplier.AccountId,
-                            AccountName = supplier.Account.Name + " (Morning)",
+                            AccountName = supplier.Account.Name,
                             AccountCode = supplier.Account.AccountCode,
                             Rate = supplier.Rate,
                             TimeOfDay = "morning" // Add this field to track which time
@@ -294,7 +296,7 @@ namespace MilkChillar.Infrastructure.Services
                         remainingSuppliers.Add(new RemainingSupplierDto
                         {
                             AccountId = supplier.AccountId,
-                            AccountName = supplier.Account.Name + " (Evening)",
+                            AccountName = supplier.Account.Name,
                             AccountCode = supplier.Account.AccountCode,
                             Rate = supplier.Rate,
                             TimeOfDay = "evening" // Add this field to track which time
@@ -327,5 +329,7 @@ namespace MilkChillar.Infrastructure.Services
                 ExpenseAccounts = expenseAccounts
             };
         }
+
+
     }
 }

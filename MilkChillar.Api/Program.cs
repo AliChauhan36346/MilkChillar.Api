@@ -1,96 +1,277 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿//using Microsoft.AspNetCore.Authentication.JwtBearer;
+//using Microsoft.IdentityModel.Tokens;
+//using System.Text;
+//using MilkChillar.Infrastructure;
+//using MilkChillar.Application.Common.Settings; 
+//using Microsoft.EntityFrameworkCore;
+//using MilkChillar.Application; 
+//using Microsoft.AspNetCore.Authorization;
+//using MilkChillar.Infrastructure.Authorization;
+//using MilkChillar.Application.Interfaces;
+//using MilkChillar.Infrastructure.Services;
+
+
+
+//var builder = WebApplication.CreateBuilder(args);
+
+//// 1. Add CORS service
+////builder.Services.AddCors(options =>
+////{
+////    options.AddPolicy("AllowLocalhost3000",
+////        policy =>
+////        {
+////            policy.WithOrigins("http://localhost:3000")
+////                  .AllowAnyHeader()
+////                  .AllowAnyMethod();
+////        });
+////});
+
+//var allowedOrigin = builder.Configuration["AllowedOrigin"] ?? "http://localhost:3000";
+
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowFrontend",
+//        policy =>
+//        {
+//            policy.WithOrigins(allowedOrigin)
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod();
+//        });
+//});
+
+
+
+//// ⬇️ 1. Load and bind JwtSettings
+//builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+//var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+
+//// ⬇️ 2. Register TokenService
+//builder.Services.AddScoped<ITokenService, TokenService>();
+
+
+
+//// ⬇️ 3. Configure JWT Authentication
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//})
+//.AddJwtBearer(options =>
+//{
+//    options.TokenValidationParameters = new TokenValidationParameters
+//    {
+//        ValidateIssuer = true,
+//        ValidateAudience = true,
+//        ValidateLifetime = true,
+//        ValidateIssuerSigningKey = true,
+//        ValidIssuer = jwtSettings.Issuer,
+//        ValidAudience = jwtSettings.Audience,
+//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+//    };
+//});
+
+////builder.Services.AddAuthorization();
+
+//builder.Services.AddAuthorization(options =>
+//{
+//    // Register dynamic policies based on permission name
+//    var permissions = new[]
+//{
+//    "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
+//    "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
+//    "account.create", "account.read", "account.update", "account.delete",
+//    "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
+//    "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
+//    "employee.create", "employee.read", "employee.update", "employee.delete",
+//    "user.create", "user.read", "user.update", "user.delete",
+//    "role.create", "role.read", "role.update", "role.delete",
+//    "rolepermission.create", "rolepermission.read", "rolepermission.delete",
+//    "userpermission.create", "userpermission.read", "userpermission.delete",
+//    "permission.read",
+//    "chillar.create", "chillar.read", "chillar.update", "chillar.delete",
+//    "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete",
+
+//    // Added Sales Permissions
+//    "sales.create", "sales.read", "sales.update", "sales.delete",
+
+//    // Added Purchase Permissions
+//    "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
+
+//    // Added Stock Permissions
+//    "stock.create", "stock.read", "stock.update", "stock.delete"
+//};
+
+
+
+
+
+
+
+//    foreach (var permission in permissions)
+//    {
+//        options.AddPolicy(permission, policy =>
+//            policy.Requirements.Add(new PermissionRequirement(permission)));
+//    }
+//});
+
+//builder.Services.AddHttpContextAccessor();
+
+//builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+//builder.Services.AddScoped<IAccountService, AccountService>();
+//builder.Services.AddScoped<ISupplierService, SupplierService>();
+//builder.Services.AddScoped<IBuyerService, BuyerService>();
+//builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+//builder.Services.AddScoped<IUserService, UserService>();
+//builder.Services.AddScoped<IUserPermissionService, UserPermissionService>();
+//builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
+//builder.Services.AddScoped<IRoleService,RoleService>();
+//builder.Services.AddScoped<IChillarReceiveService,ChillarReceiveService>();
+//builder.Services.AddScoped<IChillarService,ChillarService>();
+//builder.Services.AddScoped<ISaleService,SalesService>();
+//builder.Services.AddScoped<IPurchaseService, PurchaseService>();
+//builder.Services.AddScoped<IReportService, ReportService>();
+
+
+//builder.Services.AddControllers();
+//builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen();
+
+//// ✅ Register ApplicationDbContext
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+//builder.Services.AddSwaggerGen(options =>
+//{
+//    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+//    {
+//        Name = "Authorization",
+//        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+//        Scheme = "Bearer",
+//        BearerFormat = "JWT",
+//        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+//        Description = "Enter 'Bearer' followed by your JWT token.\nExample: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+//    });
+
+//    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+//    {
+//        {
+//            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+//            {
+//                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+//                {
+//                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+//                    Id = "Bearer"
+//                }
+//            },
+//            Array.Empty<string>()
+//        }
+//    });
+//});
+
+
+//var app = builder.Build();
+
+//app.UseCors("AllowLocalhost3000");
+
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+
+//app.UseHttpsRedirection();
+//app.UseAuthentication(); // 🛡️ must come before UseAuthorization
+//app.UseAuthorization();
+
+//app.MapControllers();
+//app.Run();
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using MilkChillar.Infrastructure;
-using MilkChillar.Application.Common.Settings; 
+using MilkChillar.Application.Common.Settings;
 using Microsoft.EntityFrameworkCore;
-using MilkChillar.Application; 
+using MilkChillar.Application;
 using Microsoft.AspNetCore.Authorization;
 using MilkChillar.Infrastructure.Authorization;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Infrastructure.Services;
-
-
+using Npgsql; // <-- add
+using Microsoft.AspNetCore.HttpOverrides; // optional if you want forwarded headers
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add CORS service
+// Read env too (Render/Supabase will inject these)
+builder.Configuration.AddEnvironmentVariables();
+
+// ---------- CORS (multi-origin via env) ----------
+var allowedOriginsCsv = builder.Configuration["ALLOWED_ORIGINS"] ?? "http://localhost:3000";
+var allowedOrigins = allowedOriginsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalhost3000",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:3000")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("Frontend",
+        policy => policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod());
 });
 
-// ⬇️ 1. Load and bind JwtSettings
+// ---------- JWT ----------
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
 
-// ⬇️ 2. Register TokenService
+var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? jwtSettings.Issuer;
+var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? jwtSettings.Audience;
+var secret = Environment.GetEnvironmentVariable("JWT_SECRETKEY") ?? jwtSettings.SecretKey;
+
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-
-
-// ⬇️ 3. Configure JWT Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services
+    .AddAuthentication(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings.Issuer,
-        ValidAudience = jwtSettings.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
-    };
-});
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+        };
+    });
 
-//builder.Services.AddAuthorization();
-
+// ---------- Authorization (unchanged) ----------
 builder.Services.AddAuthorization(options =>
 {
-    // Register dynamic policies based on permission name
     var permissions = new[]
-{
-    "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
-    "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
-    "account.create", "account.read", "account.update", "account.delete",
-    "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
-    "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
-    "employee.create", "employee.read", "employee.update", "employee.delete",
-    "user.create", "user.read", "user.update", "user.delete",
-    "role.create", "role.read", "role.update", "role.delete",
-    "rolepermission.create", "rolepermission.read", "rolepermission.delete",
-    "userpermission.create", "userpermission.read", "userpermission.delete",
-    "permission.read",
-    "chillar.create", "chillar.read", "chillar.update", "chillar.delete",
-    "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete",
-    
-    // Added Sales Permissions
-    "sales.create", "sales.read", "sales.update", "sales.delete",
-
-    // Added Purchase Permissions
-    "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
-
-    // Added Stock Permissions
-    "stock.create", "stock.read", "stock.update", "stock.delete"
-};
-
-
-
-
-
-
+    {
+        "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
+        "subaccount.create", "subaccount.read", "subaccount.update", "subaccount.delete",
+        "account.create", "account.read", "account.update", "account.delete",
+        "supplier.create", "supplier.read", "supplier.update", "supplier.delete",
+        "buyer.create", "buyer.read", "buyer.update", "buyer.delete",
+        "employee.create", "employee.read", "employee.update", "employee.delete",
+        "user.create", "user.read", "user.update", "user.delete",
+        "role.create", "role.read", "role.update", "role.delete",
+        "rolepermission.create", "rolepermission.read", "rolepermission.delete",
+        "userpermission.create", "userpermission.read", "userpermission.delete",
+        "permission.read",
+        "chillar.create", "chillar.read", "chillar.update", "chillar.delete",
+        "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete",
+        "sales.create", "sales.read", "sales.update", "sales.delete",
+        "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
+        "stock.create", "stock.read", "stock.update", "stock.delete"
+    };
 
     foreach (var permission in permissions)
     {
@@ -100,7 +281,6 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
-
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
@@ -109,22 +289,17 @@ builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserPermissionService, UserPermissionService>();
 builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
-builder.Services.AddScoped<IRoleService,RoleService>();
-builder.Services.AddScoped<IChillarReceiveService,ChillarReceiveService>();
-builder.Services.AddScoped<IChillarService,ChillarService>();
-builder.Services.AddScoped<ISaleService,SalesService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IChillarReceiveService, ChillarReceiveService>();
+builder.Services.AddScoped<IChillarService, ChillarService>();
+builder.Services.AddScoped<ISaleService, SalesService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
-
+builder.Services.AddScoped<IReportService, ReportService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-// ✅ Register ApplicationDbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-
+// ---------- Swagger ----------
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -134,7 +309,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Enter 'Bearer' followed by your JWT token.\nExample: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+        Description = "Enter 'Bearer {token}'"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -153,20 +328,82 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// ---------- Database (Supabase/Render friendly) ----------
+string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+
+// Prefer DATABASE_URL (Render, Supabase) if provided
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.Contains("://"))
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    var csb = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Username = userInfo[0],
+        Password = userInfo.Length > 1 ? userInfo[1] : "",
+        Database = uri.AbsolutePath.TrimStart('/'),
+        SslMode = SslMode.Require,
+        TrustServerCertificate = true
+    };
+    connectionString = csb.ToString();
+}
+else if (builder.Environment.IsProduction())
+{
+    // Fallback to DB_* pieces
+    var host = Environment.GetEnvironmentVariable("DB_HOST");
+    var db = Environment.GetEnvironmentVariable("DB_NAME");
+    var user = Environment.GetEnvironmentVariable("DB_USER");
+    var pwd = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+    if (!string.IsNullOrWhiteSpace(host))
+        connectionString = $"Host={host};Database={db};Username={user};Password={pwd};SSL Mode=Require;Trust Server Certificate=true";
+}
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// ---------- Host binding for Render ----------
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
-app.UseCors("AllowLocalhost3000");
+// (optional) if using a proxy, accept x-forwarded-*
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
-if (app.Environment.IsDevelopment())
+// CORS
+app.UseCors("Frontend");
+
+// Swagger in dev OR when ENABLE_SWAGGER=true in env
+if (app.Environment.IsDevelopment() || string.Equals(Environment.GetEnvironmentVariable("ENABLE_SWAGGER"), "true", StringComparison.OrdinalIgnoreCase))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseAuthentication(); // 🛡️ must come before UseAuthorization
+// In container/proxy hosting, HTTPS redirection can cause loops.
+// Keep it in dev only; let the platform terminate TLS.
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Auto-apply migrations at startup (simple and effective)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
 app.Run();
+

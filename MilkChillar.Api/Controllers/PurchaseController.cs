@@ -51,8 +51,7 @@ namespace MilkChillar.Api.Controllers
         public async Task<ActionResult> GetPaginatedPurchases([FromQuery] PurchaseQueryParameters parameters)
         {
             var tenantId = GetTenantId();
-            parameters.TenantId = tenantId;
-            var result = await _purchaseService.GetPaginatedAsync(parameters);
+            var result = await _purchaseService.GetPaginatedAsync(parameters,tenantId);
             return Ok(result);
         }
 
@@ -81,6 +80,17 @@ namespace MilkChillar.Api.Controllers
             var tenantId = GetTenantId();
             var updated = await _purchaseService.UpdateAsync(id, dto, tenantId);
             return updated is null ? NotFound() : Ok(updated);
+        }
+
+        //get my dodhi id
+        [HttpGet("mydodhi")]
+        [Authorize(Policy = "purchase.read")]
+        public async Task<ActionResult<int>> GetMyDodhiId()
+        {
+            var tenantId = GetTenantId();
+            var userId = GetUserId();
+            var dodhiId = await _purchaseService.GetMyDodhiIdAsync(userId);
+            return Ok(dodhiId);
         }
     }
 }
