@@ -2,16 +2,20 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy solution and restore
-COPY ["MilkChillar.sln", "./"]
+# Copy solution file
+COPY ["MilkChillar.Api.sln", "./"]
+
+# Copy project files
 COPY ["MilkChillar.Api/MilkChillar.Api.csproj", "MilkChillar.Api/"]
 COPY ["MilkChillar.Application/MilkChillar.Application.csproj", "MilkChillar.Application/"]
 COPY ["MilkChillar.Domain/MilkChillar.Domain.csproj", "MilkChillar.Domain/"]
 COPY ["MilkChillar.Infrastructure/MilkChillar.Infrastructure.csproj", "MilkChillar.Infrastructure/"]
+COPY ["MilkChillar.Persistence/MilkChillar.Persistence.csproj", "MilkChillar.Persistence/"]
 
-RUN dotnet restore "MilkChillar.Api/MilkChillar.Api.csproj"
+# Restore dependencies
+RUN dotnet restore "MilkChillar.Api.sln"
 
-# Copy the rest of the code
+# Copy the rest of the source code
 COPY . .
 
 # Build the app
