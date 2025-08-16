@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MilkChillar.Api", "MilkChillar.Api\MilkChillar.Api.csproj", "{1C0CEFDA-E351-4059-80E5-04AA26555F54}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MilkChillar.Api", "MilkChillar.Api\MilkChillar.Api.csproj", "{1C0CEFDA-E351-4059-80E5-04AA26555F54}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MilkChillar.Application", "MilkChillar.Application\MilkChillar.Application.csproj", "{7BA5EEBF-D80B-4C4E-999F-2D82FE1CF4B9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MilkChillar.Application", "MilkChillar.Application\MilkChillar.Application.csproj", "{7BA5EEBF-D80B-4C4E-999F-2D82FE1CF4B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MilkChillar.Domain", "MilkChillar.Domain\MilkChillar.Domain.csproj", "{BD27DBCC-E983-4C14-BABF-3BA9B8984EE8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MilkChillar.Domain", "MilkChillar.Domain\MilkChillar.Domain.csproj", "{BD27DBCC-E983-4C14-BABF-3BA9B8984EE8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MilkChillar.Persistence", "MilkChillar.Persistence\MilkChillar.Persistence.csproj", "{95250647-81DD-4188-928D-4750A5794BA9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MilkChillar.Persistence", "MilkChillar.Persistence\MilkChillar.Persistence.csproj", "{95250647-81DD-4188-928D-4750A5794BA9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MilkChillar.Infrastructure", "MilkChillar.Infrastructure\MilkChillar.Infrastructure.csproj", "{19008EE5-AE3F-4F40-B0E7-965B944A3A23}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MilkChillar.Infrastructure", "MilkChillar.Infrastructure\MilkChillar.Infrastructure.csproj", "{19008EE5-AE3F-4F40-B0E7-965B944A3A23}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
