@@ -238,7 +238,7 @@ using System.Net; // Add this for IPv4 configuration
 var builder = WebApplication.CreateBuilder(args);
 
 // Force IPv4 for better compatibility with Railway
-AppContext.SetSwitch("System.Net.DisableIPv6", true);
+//AppContext.SetSwitch("System.Net.DisableIPv6", true);
 
 // Read env too (Render/Railway/Supabase will inject these)
 builder.Configuration.AddEnvironmentVariables();
@@ -392,10 +392,14 @@ if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.Contains("://"))
 else if (builder.Environment.IsProduction())
 {
     // Fallback to DB_* pieces
-    var host = Environment.GetEnvironmentVariable("DB_HOST");
-    var db = Environment.GetEnvironmentVariable("DB_NAME");
-    var user = Environment.GetEnvironmentVariable("DB_USER");
-    var pwd = Environment.GetEnvironmentVariable("DB_PASSWORD");
+    //var host = Environment.GetEnvironmentVariable("DB_HOST");
+    //var db = Environment.GetEnvironmentVariable("DB_NAME");
+    //var user = Environment.GetEnvironmentVariable("DB_USER");
+    //var pwd = Environment.GetEnvironmentVariable("DB_PASSWORD");
+    var host = Environment.GetEnvironmentVariable("db.hnyoaqctfaetyqvpenek.supabase.co");
+    var db = Environment.GetEnvironmentVariable("postgres");
+    var user = Environment.GetEnvironmentVariable("postgres");
+    var pwd = Environment.GetEnvironmentVariable("aliAbbas346");
 
     if (!string.IsNullOrWhiteSpace(host))
         connectionString = $"Host={host};Database={db};Username={user};Password={pwd};SSL Mode=Require;Trust Server Certificate=true;Timeout=30;Command Timeout=30";
