@@ -52,11 +52,21 @@ namespace MilkChillar.Infrastructure.Services
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
                 suppliersQuery = suppliersQuery.Where(s =>
-                    s.FullName.Contains(query.Search) ||
+                    s.FullName.ToLower().Contains(query.Search.ToLower()) ||
                     s.KhataNumber.Contains(query.Search) ||
                     (s.Address != null && s.Address.Contains(query.Search))
                 );
             }
+
+            //if (!string.IsNullOrWhiteSpace(query.Search))
+            //{
+            //    var searchTerm = $"%{query.Search}%";
+            //    suppliersQuery = suppliersQuery.Where(s =>
+            //        EF.Functions.Like(s.FullName, searchTerm) ||
+            //        EF.Functions.Like(s.KhataNumber, searchTerm) ||
+            //        (s.Address != null && EF.Functions.Like(s.Address, searchTerm))
+            //    );
+            //}
 
             if (query.IsActive.HasValue)
                 suppliersQuery = suppliersQuery.Where(s => s.IsActive == query.IsActive);

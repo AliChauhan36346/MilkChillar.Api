@@ -158,6 +158,89 @@ namespace MilkChillar.Infrastructure.Services
             };
         }
 
+        //    public async Task<ChillarInchargeDashboardStatsDto> GetChillarInchargeDashboardStatsAsync(
+        //ChillarInchargeDashboardQuery query,
+        //int tenantId)
+        //    {
+        //        var receives = _dbContext.ChillarReceives.AsQueryable();
+        //        var sales = _dbContext.Sales.AsQueryable();
+
+        //        // Filter by tenant
+        //        receives = receives.Where(r => r.TenantId == tenantId);
+        //        sales = sales.Where(s => s.TenantId == tenantId);
+
+        //        // ChillarId filter
+        //        if (query.ChillarId.HasValue)
+        //        {
+        //            receives = receives.Where(r => r.ChillarId == query.ChillarId.Value);
+        //            sales = sales.Where(s => s.ChillarId == query.ChillarId.Value);
+        //        }
+
+        //        // ChillarIncharge filter
+        //        if (query.ChillarInchargeId.HasValue)
+        //        {
+        //            receives = receives.Where(r => r.ChillarInchargeId == query.ChillarInchargeId.Value);
+        //            // Sales don't have incharge directly — only filtered by chillarId
+        //        }
+
+        //        // Previous stock calculation
+        //        var prevReceivesQuery = receives.Where(r => r.Date < query.StartDate);
+        //        var prevSalesQuery = sales.Where(s => s.Date < query.StartDate);
+
+        //        // If StartTimeOfDay = "evening", also include only morning receives of StartDate in prev stock
+        //        if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "evening")
+        //        {
+        //            prevReceivesQuery = prevReceivesQuery
+        //                .Concat(receives.Where(r => r.Date == query.StartDate && r.TimeOfDay.ToLower() == "morning"));
+        //            // Sales from StartDate are NOT included in prev stock in this case
+        //        }
+        //        else if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "morning")
+        //        {
+        //            // Include morning receives of that day in range, sales are part of selected range
+        //        }
+
+        //        var previousStockLiters =
+        //            await prevReceivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m
+        //            - await prevSalesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
+
+        //        // Selected range filter for receives
+        //        var receivesQuery = receives.Where(r =>
+        //            (r.Date > query.StartDate && r.Date < query.EndDate) ||
+        //            (r.Date == query.StartDate &&
+        //                (string.IsNullOrWhiteSpace(query.StartTimeOfDay)
+        //                 || r.TimeOfDay.ToLower() == query.StartTimeOfDay.ToLower()
+        //                 || query.StartTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning"
+        //                 || query.StartTimeOfDay.ToLower() == "evening" && r.TimeOfDay.ToLower() == "evening")) ||
+        //            (r.Date == query.EndDate &&
+        //                (string.IsNullOrWhiteSpace(query.EndTimeOfDay)
+        //                 || query.EndTimeOfDay.ToLower() == "evening"
+        //                 || (query.EndTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning")))
+        //        );
+
+        //        // Selected range filter for sales
+        //        var salesQuery = sales.Where(s =>
+        //            (s.Date > query.StartDate && s.Date < query.EndDate) ||
+        //            (s.Date == query.EndDate) ||
+        //            (s.Date == query.StartDate &&
+        //                (string.IsNullOrWhiteSpace(query.StartTimeOfDay) || query.StartTimeOfDay.ToLower() == "morning"))
+        //        );
+
+        //        var totalReceives = await receivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
+        //        var totalSales = await salesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
+
+        //        var currentStock = (previousStockLiters + totalReceives) - totalSales;
+
+        //        return new ChillarInchargeDashboardStatsDto
+        //        {
+        //            PreviousStock = previousStockLiters,
+        //            TotalChillarReceive = totalReceives,
+        //            TotalSales = totalSales,
+        //            CurrentStock = currentStock
+        //        };
+        //    }
+
+
+
         public async Task<ChillarInchargeDashboardStatsDto> GetChillarInchargeDashboardStatsAsync(
     ChillarInchargeDashboardQuery query,
     int tenantId)
@@ -180,54 +263,83 @@ namespace MilkChillar.Infrastructure.Services
             if (query.ChillarInchargeId.HasValue)
             {
                 receives = receives.Where(r => r.ChillarInchargeId == query.ChillarInchargeId.Value);
-                // Sales don't have incharge directly — only filtered by chillarId
             }
 
-            // Previous stock calculation
+            // Previous stock calculation - FIXED
             var prevReceivesQuery = receives.Where(r => r.Date < query.StartDate);
             var prevSalesQuery = sales.Where(s => s.Date < query.StartDate);
 
-            // If StartTimeOfDay = "evening", also include only morning receives of StartDate in prev stock
+            // Handle StartDate adjustments for previous stock
             if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "evening")
             {
+                // If starting from evening, add morning receives and all sales from StartDate to previous stock
                 prevReceivesQuery = prevReceivesQuery
                     .Concat(receives.Where(r => r.Date == query.StartDate && r.TimeOfDay.ToLower() == "morning"));
-                // Sales from StartDate are NOT included in prev stock in this case
+                prevSalesQuery = prevSalesQuery
+                    .Concat(sales.Where(s => s.Date == query.StartDate));
             }
-            else if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "morning")
+
+            // Previous stock calculation - Build base queries
+            var prevReceivesQueryb = receives.Where(r => r.Date < query.StartDate);
+            var prevSalesQueryb = sales.Where(s => s.Date < query.StartDate);
+
+            // Handle StartDate adjustments for previous stock
+            if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "evening")
             {
-                // Include morning receives of that day in range, sales are part of selected range
+                // If starting from evening, add morning receives and all sales from StartDate to previous stock
+                prevReceivesQuery = prevReceivesQuery
+                    .Concat(receives.Where(r => r.Date == query.StartDate && r.TimeOfDay.ToLower() == "morning"));
+                prevSalesQuery = prevSalesQuery
+                    .Concat(sales.Where(s => s.Date == query.StartDate));
             }
 
-            var previousStockLiters =
-                await prevReceivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m
-                - await prevSalesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
+            // Calculate previous stock properly: Receives - Sales
+            var prevReceivesTotal = await prevReceivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
+            var prevSalesTotal = await prevSalesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
+            var previousStockLiters = prevReceivesTotal - prevSalesTotal;
 
-            // Selected range filter for receives
+            // Debug logging to identify the issue
+            var debugPrevReceivesCount = await prevReceivesQuery.CountAsync();
+            var debugPrevSalesCount = await prevSalesQuery.CountAsync();
+            System.Diagnostics.Debug.WriteLine($"Debug - StartDate: {query.StartDate}");
+            System.Diagnostics.Debug.WriteLine($"Debug - Previous Receives Count: {debugPrevReceivesCount}, Total: {prevReceivesTotal}");
+            System.Diagnostics.Debug.WriteLine($"Debug - Previous Sales Count: {debugPrevSalesCount}, Total: {prevSalesTotal}");
+            System.Diagnostics.Debug.WriteLine($"Debug - Previous Stock: {previousStockLiters}");
+
+            // Current range receives filter
             var receivesQuery = receives.Where(r =>
+                // Include dates strictly between StartDate and EndDate
                 (r.Date > query.StartDate && r.Date < query.EndDate) ||
+
+                // Handle StartDate inclusion based on StartTimeOfDay
                 (r.Date == query.StartDate &&
-                    (string.IsNullOrWhiteSpace(query.StartTimeOfDay)
-                     || r.TimeOfDay.ToLower() == query.StartTimeOfDay.ToLower()
-                     || query.StartTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning"
-                     || query.StartTimeOfDay.ToLower() == "evening" && r.TimeOfDay.ToLower() == "evening")) ||
+                    (string.IsNullOrWhiteSpace(query.StartTimeOfDay) || // Include all if no time specified
+                     query.StartTimeOfDay.ToLower() == "morning" || // Include all if starting from morning
+                     (query.StartTimeOfDay.ToLower() == "evening" && r.TimeOfDay.ToLower() == "evening"))) || // Only evening if starting from evening
+
+                // Handle EndDate inclusion based on EndTimeOfDay
                 (r.Date == query.EndDate &&
-                    (string.IsNullOrWhiteSpace(query.EndTimeOfDay)
-                     || query.EndTimeOfDay.ToLower() == "evening"
-                     || (query.EndTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning")))
+                    (string.IsNullOrWhiteSpace(query.EndTimeOfDay) || // Include all if no end time specified
+                     query.EndTimeOfDay.ToLower() == "evening" || // Include all if ending at evening
+                     (query.EndTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning"))) // Only morning if ending at morning
             );
 
-            // Selected range filter for sales
+            // Current range sales filter
             var salesQuery = sales.Where(s =>
+                // Include dates strictly between StartDate and EndDate
                 (s.Date > query.StartDate && s.Date < query.EndDate) ||
-                (s.Date == query.EndDate) ||
+
+                // Handle StartDate inclusion - only if starting from morning or no time specified
                 (s.Date == query.StartDate &&
-                    (string.IsNullOrWhiteSpace(query.StartTimeOfDay) || query.StartTimeOfDay.ToLower() == "morning"))
+                    (string.IsNullOrWhiteSpace(query.StartTimeOfDay) || query.StartTimeOfDay.ToLower() == "morning")) ||
+
+                // Handle EndDate inclusion - CORRECTED LOGIC
+                // Include ALL sales from EndDate regardless of EndTimeOfDay (since sales don't have time)
+                (s.Date == query.EndDate)
             );
 
             var totalReceives = await receivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
             var totalSales = await salesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
-
             var currentStock = (previousStockLiters + totalReceives) - totalSales;
 
             return new ChillarInchargeDashboardStatsDto
