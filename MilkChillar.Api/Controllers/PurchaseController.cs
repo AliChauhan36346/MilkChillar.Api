@@ -29,9 +29,26 @@ namespace MilkChillar.Api.Controllers
         private int GetUserId() =>
             int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException("User ID not found."));
 
+        //[HttpGet("metadata")]
+        //[Authorize(Policy = "purchase.read")]
+        //public async Task<ActionResult<PurchaseMetadataDto>> GetPurchaseMetadata([FromQuery] DateOnly date, [FromQuery] string timeOfDay)
+        //{
+        //    // Allow "both" in addition to "morning" and "evening"
+        //    if (string.IsNullOrWhiteSpace(timeOfDay) || (timeOfDay != "morning" && timeOfDay != "evening" && timeOfDay != "both"))
+        //    {
+        //        return BadRequest("TimeOfDay must be 'morning', 'evening', or 'both'");
+        //    }
+
+        //    var tenantId = GetTenantId();
+        //    var userId = GetUserId(); // Add this line
+        //    var result = await _purchaseService.GetPurchaseMetadataAsync(date, timeOfDay, tenantId, userId);
+        //    return Ok(result);
+        //}
+
+
         [HttpGet("metadata")]
         [Authorize(Policy = "purchase.read")]
-        public async Task<ActionResult<PurchaseMetadataDto>> GetPurchaseMetadata([FromQuery] DateOnly date, [FromQuery] string timeOfDay)
+        public async Task<ActionResult<PurchaseMetadataDto>> GetPurchaseMetadata([FromQuery] DateOnly date,[FromQuery] string timeOfDay,[FromQuery] int dodhiId)
         {
             // Allow "both" in addition to "morning" and "evening"
             if (string.IsNullOrWhiteSpace(timeOfDay) || (timeOfDay != "morning" && timeOfDay != "evening" && timeOfDay != "both"))
@@ -39,9 +56,13 @@ namespace MilkChillar.Api.Controllers
                 return BadRequest("TimeOfDay must be 'morning', 'evening', or 'both'");
             }
 
+            if (dodhiId <= 0)
+            {
+                return BadRequest("DodhiId must be a valid positive integer");
+            }
+
             var tenantId = GetTenantId();
-            var userId = GetUserId(); // Add this line
-            var result = await _purchaseService.GetPurchaseMetadataAsync(date, timeOfDay, tenantId, userId);
+            var result = await _purchaseService.GetPurchaseMetadataAsync(date, timeOfDay, tenantId, dodhiId);
             return Ok(result);
         }
 
