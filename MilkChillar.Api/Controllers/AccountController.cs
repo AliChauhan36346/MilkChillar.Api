@@ -89,6 +89,31 @@ namespace MilkChillar.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("search")]
+        [Authorize(Policy = "account.read")]
+        public async Task<IActionResult> SearchAccounts(
+        [FromQuery] string query,
+        [FromQuery] string? mainAccountCode = null)
+        {
+            var result = await _accountService.SearchAccountsAsync(query, mainAccountCode);
+            return Ok(result);
+        }
+
+        [HttpGet("by-code-prefix")]
+        [Authorize(Policy = "account.read")]
+        public async Task<IActionResult> GetAccountsByCodePrefix([FromQuery] string codePrefix)
+        {
+            try
+            {
+                var result = await _accountService.GetAccountsByCodePrefixAsync(codePrefix);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
 
     }
 }

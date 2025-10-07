@@ -303,6 +303,70 @@ namespace MilkChillar.Infrastructure.Services
             return result;
         }
 
+        public async Task<List<AccountSearchDto>> SearchAccountsAsync(string query, string? mainAccountCode = null)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var accountsQuery = _context.VwAccountSearch
+                .Where(x => x.TenantId == tenantId);
+
+            if (!string.IsNullOrWhiteSpace(mainAccountCode))
+            {
+                accountsQuery = accountsQuery
+                    .Where(x => x.AccountCode.StartsWith(mainAccountCode));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                string lowered = query.ToLower();
+                accountsQuery = accountsQuery
+                    .Where(x => x.AccountCode.ToLower().Contains(lowered) ||
+                                x.AccountName.ToLower().Contains(lowered));
+            }
+
+            return await accountsQuery
+                .OrderBy(x => x.AccountCode)
+                .Take(15)
+                .Select(x => new AccountSearchDto
+                {
+                    AccountId = x.AccountId,
+                    AccountCode = x.AccountCode,
+                    Name = x.AccountName,
+                    Balance = x.Balance
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<AccountSearchDto>> GetAccountsByCodePrefixAsync(string codePrefix)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            if (string.IsNullOrWhiteSpace(codePrefix))
+            {
+                throw new ArgumentException("Code prefix cannot be null or empty", nameof(codePrefix));
+            }
+
+            // Ensure we're working with exactly 3 digits
+            string prefix = codePrefix.Trim();
+            if (prefix.Length != 3)
+            {
+                throw new ArgumentException("Code prefix must be exactly 3 digits", nameof(codePrefix));
+            }
+
+            return await _context.VwAccountSearch
+                .Where(x => x.TenantId == tenantId &&
+                           x.AccountCode.StartsWith(prefix))
+                .OrderBy(x => x.AccountCode)
+                .Select(x => new AccountSearchDto
+                {
+                    AccountId = x.AccountId,
+                    AccountCode = x.AccountCode,
+                    Name = x.AccountName,
+                    Balance = x.Balance
+                })
+                .ToListAsync();
+        }
+
 
     }
 }

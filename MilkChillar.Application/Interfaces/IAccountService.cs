@@ -17,6 +17,9 @@ namespace MilkChillar.Application.Interfaces
         Task<List<AccountDto>> GetAccountsAsync(int tenantId, int subAccountId);
         Task<List<ChartOfAccountDto>> GetChartOfAccountsAsync(int tenantId);
         Task<List<SubAccountDto>> GetSubAccountsByMainAccountCodeAsync(string mainAccountCode);
+        Task<List<AccountSearchDto>> SearchAccountsAsync(string query, string? mainAccountCode = null);
+        Task<List<AccountSearchDto>> GetAccountsByCodePrefixAsync(string codePrefix);
+
 
 
     }

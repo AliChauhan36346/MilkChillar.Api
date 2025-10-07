@@ -11,61 +11,69 @@
 //using MilkChillar.Infrastructure.Authorization;
 //using MilkChillar.Application.Interfaces;
 //using MilkChillar.Infrastructure.Services;
-//using Npgsql; // <-- add
-//using Microsoft.AspNetCore.HttpOverrides; // optional if you want forwarded headers
 
 //var builder = WebApplication.CreateBuilder(args);
 
-//// Read env too (Render/Supabase will inject these)
-//builder.Configuration.AddEnvironmentVariables();
-
-//// ---------- CORS (multi-origin via env) ----------
-//var allowedOriginsCsv = builder.Configuration["ALLOWED_ORIGINS"] ?? "http://localhost:3000";
-//var allowedOrigins = allowedOriginsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
+//// 1. Add CORS service - FIXED VERSION
 //builder.Services.AddCors(options =>
 //{
-//    options.AddPolicy("Frontend",
-//        policy => policy
-//            .WithOrigins(allowedOrigins)
-//            .AllowAnyHeader()
-//            .AllowAnyMethod());
+//    options.AddPolicy("AllowLocalhost3000",
+//        policy =>
+//        {
+//            policy.WithOrigins("http://localhost:3000")
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod();
+//                  //.AllowCredentials()  // ✅ CRITICAL: This was missing
+//                  //.SetPreflightMaxAge(TimeSpan.FromHours(1)); // ✅ Cache preflight requests
+//        });
 //});
 
-//// ---------- JWT ----------
+//// ⬇️ 1. Load and bind JwtSettings
 //builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-//var jwtSection = builder.Configuration.GetSection("JwtSettings");
-//var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
+//var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
-//var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? jwtSettings.Issuer;
-//var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? jwtSettings.Audience;
-//var secret = Environment.GetEnvironmentVariable("JWT_SECRETKEY") ?? jwtSettings.SecretKey;
-
+//// ⬇️ 2. Register TokenService
 //builder.Services.AddScoped<ITokenService, TokenService>();
 
-//builder.Services
-//    .AddAuthentication(options =>
+//// ⬇️ 3. Configure JWT Authentication
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//})
+//.AddJwtBearer(options =>
+//{
+//    options.TokenValidationParameters = new TokenValidationParameters
 //    {
-//        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-//        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-//    })
-//    .AddJwtBearer(options =>
-//    {
-//        options.TokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuer = true,
-//            ValidateAudience = true,
-//            ValidateLifetime = true,
-//            ValidateIssuerSigningKey = true,
-//            ValidIssuer = issuer,
-//            ValidAudience = audience,
-//            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
-//        };
-//    });
+//        ValidateIssuer = true,
+//        ValidateAudience = true,
+//        ValidateLifetime = true,
+//        ValidateIssuerSigningKey = true,
+//        ValidIssuer = jwtSettings.Issuer,
+//        ValidAudience = jwtSettings.Audience,
+//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+//        ClockSkew = TimeSpan.FromMinutes(5) // ✅ Allow 5 minute clock skew
+//    };
 
-//// ---------- Authorization (unchanged) ----------
+//    // ✅ Handle authentication failures better
+//    options.Events = new JwtBearerEvents
+//    {
+//        OnAuthenticationFailed = context =>
+//        {
+//            Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+//            return Task.CompletedTask;
+//        },
+//        OnChallenge = context =>
+//        {
+//            Console.WriteLine($"Authentication challenge: {context.Error}");
+//            return Task.CompletedTask;
+//        }
+//    };
+//});
+
 //builder.Services.AddAuthorization(options =>
 //{
+//    // Register dynamic policies based on permission name
 //    var permissions = new[]
 //    {
 //        "mainaccount.create", "mainaccount.read", "mainaccount.update", "mainaccount.delete",
@@ -83,7 +91,9 @@
 //        "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete",
 //        "sales.create", "sales.read", "sales.update", "sales.delete",
 //        "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
-//        "stock.create", "stock.read", "stock.update", "stock.delete"
+//        "stock.create", "stock.read", "stock.update", "stock.delete",
+//        "openingBalance.read", "openingBalance.create", "openingBalance.update", "openingBalance.delete",
+//        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read",
 //    };
 
 //    foreach (var permission in permissions)
@@ -94,6 +104,7 @@
 //});
 
 //builder.Services.AddHttpContextAccessor();
+
 //builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 //builder.Services.AddScoped<IAccountService, AccountService>();
 //builder.Services.AddScoped<ISupplierService, SupplierService>();
@@ -108,11 +119,19 @@
 //builder.Services.AddScoped<ISaleService, SalesService>();
 //builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 //builder.Services.AddScoped<IReportService, ReportService>();
+//builder.Services.AddScoped<IAccountOpeningBalanceService, AccountOpeningBalanceService>();
+//builder.Services.AddScoped<ICashPaymentService, CashPaymentService>();
+//builder.Services.AddScoped<IAccountLedgerService, AccountLedgerService>();
+//builder.Services.AddScoped<IParchiService, ParchiService>();
 
 //builder.Services.AddControllers();
 //builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddSwaggerGen();
 
-//// ---------- Swagger ----------
+//// ✅ Register ApplicationDbContext
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 //builder.Services.AddSwaggerGen(options =>
 //{
 //    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -122,7 +141,7 @@
 //        Scheme = "Bearer",
 //        BearerFormat = "JWT",
 //        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-//        Description = "Enter 'Bearer {token}'"
+//        Description = "Enter 'Bearer' followed by your JWT token.\nExample: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6..."
 //    });
 
 //    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -141,84 +160,26 @@
 //    });
 //});
 
-//// ---------- Database (Supabase/Render friendly) ----------
-//string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-
-//// Prefer DATABASE_URL (Render, Supabase) if provided
-//var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-//if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.Contains("://"))
-//{
-//    var uri = new Uri(databaseUrl);
-//    var userInfo = uri.UserInfo.Split(':');
-//    var csb = new NpgsqlConnectionStringBuilder
-//    {
-//        Host = uri.Host,
-//        Port = uri.Port > 0 ? uri.Port : 5432,
-//        Username = userInfo[0],
-//        Password = userInfo.Length > 1 ? userInfo[1] : "",
-//        Database = uri.AbsolutePath.TrimStart('/'),
-//        SslMode = SslMode.Require,
-//        TrustServerCertificate = true
-//    };
-//    connectionString = csb.ToString();
-//}
-//else if (builder.Environment.IsProduction())
-//{
-//    // Fallback to DB_* pieces
-//    var host = Environment.GetEnvironmentVariable("DB_HOST");
-//    var db = Environment.GetEnvironmentVariable("DB_NAME");
-//    var user = Environment.GetEnvironmentVariable("DB_USER");
-//    var pwd = Environment.GetEnvironmentVariable("DB_PASSWORD");
-
-//    if (!string.IsNullOrWhiteSpace(host))
-//        connectionString = $"Host={host};Database={db};Username={user};Password={pwd};SSL Mode=Require;Trust Server Certificate=true";
-//}
-
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseNpgsql(connectionString));
-
-//// ---------- Host binding for Render ----------
-//var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-//builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
 //var app = builder.Build();
 
-//// (optional) if using a proxy, accept x-forwarded-*
-//app.UseForwardedHeaders(new ForwardedHeadersOptions
-//{
-//    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-//});
+//// ✅ CORS must be first in the pipeline
+//app.UseCors("AllowLocalhost3000");
 
-//// CORS
-//app.UseCors("Frontend");
-
-//// Swagger in dev OR when ENABLE_SWAGGER=true in env
-//if (app.Environment.IsDevelopment() || string.Equals(Environment.GetEnvironmentVariable("ENABLE_SWAGGER"), "true", StringComparison.OrdinalIgnoreCase))
+//if (app.Environment.IsDevelopment())
 //{
 //    app.UseSwagger();
 //    app.UseSwaggerUI();
 //}
 
-//// In container/proxy hosting, HTTPS redirection can cause loops.
-//// Keep it in dev only; let the platform terminate TLS.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseHttpsRedirection();
-//}
-
-//app.UseAuthentication();
+//app.UseHttpsRedirection();
+//app.UseAuthentication(); // 🛡️ must come before UseAuthorization
 //app.UseAuthorization();
 
 //app.MapControllers();
-
-//// Auto-apply migrations at startup (simple and effective)
-//using (var scope = app.Services.CreateScope())
-//{
-//    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//    db.Database.Migrate();
-//}
-
 //app.Run();
+
+
+
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -238,7 +199,7 @@ using System.Net; // Add this for IPv4 configuration
 var builder = WebApplication.CreateBuilder(args);
 
 // Force IPv4 for better compatibility with Railway
-//AppContext.SetSwitch("System.Net.DisableIPv6", true);
+AppContext.SetSwitch("System.Net.DisableIPv6", true);
 
 // Read env too (Render/Railway/Supabase will inject these)
 builder.Configuration.AddEnvironmentVariables();
@@ -307,7 +268,9 @@ builder.Services.AddAuthorization(options =>
         "chillarreceive.create", "chillarreceive.read", "chillarreceive.update", "chillarreceive.delete",
         "sales.create", "sales.read", "sales.update", "sales.delete",
         "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
-        "stock.create", "stock.read", "stock.update", "stock.delete"
+        "stock.create", "stock.read", "stock.update", "stock.delete",
+        "openingBalance.read", "openingBalance.create", "openingBalance.update", "openingBalance.delete",
+        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read",
     };
 
     foreach (var permission in permissions)
@@ -332,6 +295,9 @@ builder.Services.AddScoped<IChillarService, ChillarService>();
 builder.Services.AddScoped<ISaleService, SalesService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IAccountOpeningBalanceService, AccountOpeningBalanceService>();
+builder.Services.AddScoped<ICashPaymentService, CashPaymentService>();
+builder.Services.AddScoped<IParchiService, ParchiService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
