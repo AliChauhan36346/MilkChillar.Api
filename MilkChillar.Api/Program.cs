@@ -205,7 +205,8 @@ AppContext.SetSwitch("System.Net.DisableIPv6", true);
 builder.Configuration.AddEnvironmentVariables();
 
 // ---------- CORS (multi-origin via env) ----------
-var allowedOriginsCsv = builder.Configuration["ALLOWED_ORIGINS"] ?? "http://localhost:3000";
+//var allowedOriginsCsv = builder.Configuration["ALLOWED_ORIGINS"] ?? "http://localhost:3000";
+var allowedOriginsCsv = builder.Configuration["ALLOWED_ORIGINS"] ?? "https://chuhandaries189.vercel.app";
 var allowedOrigins = allowedOriginsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 builder.Services.AddCors(options =>
@@ -214,7 +215,8 @@ builder.Services.AddCors(options =>
         policy => policy
             .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 // ---------- JWT ----------
@@ -376,14 +378,16 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
+// CORS
+app.UseCors("Frontend");
+
 // (optional) if using a proxy, accept x-forwarded-*
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
-// CORS
-app.UseCors("Frontend");
+
 
 // Swagger in dev OR when ENABLE_SWAGGER=true in env
 if (app.Environment.IsDevelopment() || string.Equals(Environment.GetEnvironmentVariable("ENABLE_SWAGGER"), "true", StringComparison.OrdinalIgnoreCase))
