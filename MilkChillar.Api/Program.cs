@@ -23,8 +23,8 @@
 //            policy.WithOrigins("http://localhost:3000")
 //                  .AllowAnyHeader()
 //                  .AllowAnyMethod();
-//                  //.AllowCredentials()  // ✅ CRITICAL: This was missing
-//                  //.SetPreflightMaxAge(TimeSpan.FromHours(1)); // ✅ Cache preflight requests
+//            //.AllowCredentials()  // ✅ CRITICAL: This was missing
+//            //.SetPreflightMaxAge(TimeSpan.FromHours(1)); // ✅ Cache preflight requests
 //        });
 //});
 
@@ -297,6 +297,7 @@ builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAccountOpeningBalanceService, AccountOpeningBalanceService>();
 builder.Services.AddScoped<ICashPaymentService, CashPaymentService>();
+builder.Services.AddScoped<IAccountLedgerService, AccountLedgerService>();
 builder.Services.AddScoped<IParchiService, ParchiService>();
 
 builder.Services.AddControllers();
@@ -357,11 +358,6 @@ if (!string.IsNullOrWhiteSpace(databaseUrl) && databaseUrl.Contains("://"))
 }
 else if (builder.Environment.IsProduction())
 {
-    // Fallback to DB_* pieces
-    //var host = Environment.GetEnvironmentVariable("DB_HOST");
-    //var db = Environment.GetEnvironmentVariable("DB_NAME");
-    //var user = Environment.GetEnvironmentVariable("DB_USER");
-    //var pwd = Environment.GetEnvironmentVariable("DB_PASSWORD");
     var host = Environment.GetEnvironmentVariable("db.hnyoaqctfaetyqvpenek.supabase.co");
     var db = Environment.GetEnvironmentVariable("postgres");
     var user = Environment.GetEnvironmentVariable("postgres");
