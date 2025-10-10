@@ -208,6 +208,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.AccountId).HasColumnName("account_id");
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.NameUrdu).HasColumnName("name_urdu");
 
             entity.HasOne(e => e.Tenant)
                   .WithMany(t => t.Suppliers)

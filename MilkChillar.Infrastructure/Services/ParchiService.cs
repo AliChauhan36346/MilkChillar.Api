@@ -182,6 +182,7 @@ namespace MilkChillar.Infrastructure.Services
             {
                 AccountCode = supplier.Account.AccountCode,
                 AccountName = supplier.Account.Name,
+                AccountNameUrdu=supplier.NameUrdu,
                 KhataNumber = supplier.KhataNumber,
                 DodhiId = supplier.DodhiId,
                 DodhiName = supplier.Dodhi?.FullName,

@@ -10,6 +10,7 @@ namespace MilkChillar.Application.DTOs.Suppliers
     {
         public int AccountId { get; set; }
         public string FullName { get; set; } = string.Empty;
+        public string? NameUrdu { get; set; }
         public decimal Rate { get; set; }
         public string KhataNumber { get; set; } = string.Empty;
         public decimal CreditLimit { get; set; }

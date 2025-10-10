@@ -28,6 +28,7 @@ namespace MilkChillar.Infrastructure.Services
                     SupplierId = s.SupplierId,
                     AccountId = s.AccountId,
                     FullName = s.FullName,
+                    NameUrdu=s.NameUrdu,
                     Rate = s.Rate,
                     KhataNumber = s.KhataNumber,
                     CreditLimit = s.CreditLimit,
@@ -90,6 +91,7 @@ namespace MilkChillar.Infrastructure.Services
                 SupplierId = s.SupplierId,
                 AccountId = s.AccountId,
                 FullName = s.FullName,
+                NameUrdu=s.NameUrdu,
                 Rate = s.Rate,
                 KhataNumber = s.KhataNumber,
                 CreditLimit = s.CreditLimit,
@@ -125,6 +127,7 @@ namespace MilkChillar.Infrastructure.Services
                 SupplierId = s.SupplierId,
                 AccountId = s.AccountId,
                 FullName = s.FullName,
+                NameUrdu=s.NameUrdu,
                 Rate = s.Rate,
                 KhataNumber = s.KhataNumber,
                 CreditLimit = s.CreditLimit,
@@ -145,6 +148,7 @@ namespace MilkChillar.Infrastructure.Services
                 TenantId = tenantId,
                 AccountId = dto.AccountId,
                 FullName = dto.FullName,
+                NameUrdu = dto.NameUrdu,
                 Rate = dto.Rate,
                 KhataNumber = dto.KhataNumber,
                 CreditLimit = dto.CreditLimit,
@@ -187,6 +191,7 @@ namespace MilkChillar.Infrastructure.Services
 
             supplier.AccountId = dto.AccountId;
             supplier.FullName = dto.FullName;
+            supplier.NameUrdu = dto.NameUrdu;
             supplier.Rate = dto.Rate;
             supplier.KhataNumber = dto.KhataNumber;
             supplier.CreditLimit = dto.CreditLimit;
