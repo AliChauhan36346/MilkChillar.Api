@@ -180,6 +180,7 @@ namespace MilkChillar.Infrastructure.Services
 
             return new ParchiDto
             {
+                AccountId=supplier.Account.AccountId,
                 AccountCode = supplier.Account.AccountCode,
                 AccountName = supplier.Account.Name,
                 AccountNameUrdu=supplier.NameUrdu,

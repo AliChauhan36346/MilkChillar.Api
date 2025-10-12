@@ -9,9 +9,10 @@ namespace MilkChillar.Application.DTOs.Parchi
 {
     public class ParchiDto
     {
+        public int AccountId { get; set; }
         public string AccountCode { get; set; } = string.Empty;
         public string AccountName { get; set; } = string.Empty;
-        public string AccountNameUrdu { get; set; }
+        public string AccountNameUrdu { get; set; } = string.Empty;
         public string KhataNumber { get; set; } = string.Empty;
         public int? DodhiId { get; set; }
         public string? DodhiName { get; set; }
