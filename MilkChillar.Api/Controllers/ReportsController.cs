@@ -87,6 +87,60 @@ namespace MilkChillar.Api.Controllers
             return Ok(result);
         }
 
+        // Add these endpoints to your ReportsController class
+
+        [HttpGet("AdminDashboardStats")]
+        public async Task<IActionResult> GetAdminDashboardStats()
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var result = await _dashboardStatsService.GetAdminDashboardStatsAsync(tenantId);
+            return Ok(result);
+        }
+
+        [HttpGet("AccountBalances/{accountType}")]
+        public async Task<IActionResult> GetAccountBalances(
+            string accountType,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 25)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            try
+            {
+                var result = await _dashboardStatsService.GetAccountBalancesAsync(
+                    accountType, tenantId, pageNumber, pageSize);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("AccountBalances/{accountType}/Summary")]
+        public async Task<IActionResult> GetAccountBalanceSummary(string accountType)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            try
+            {
+                var result = await _dashboardStatsService.GetAccountBalanceSummaryAsync(
+                    accountType, tenantId);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
     }
 
 }

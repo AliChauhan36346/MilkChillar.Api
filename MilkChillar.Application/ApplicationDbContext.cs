@@ -31,6 +31,13 @@ public class ApplicationDbContext : DbContext
     public DbSet<CashPayment> CashPayments { get; set; }
     public DbSet<CashPaymentLine> CashPaymentLines { get; set; }
     public DbSet<VwAccountSearch> VwAccountSearch { get; set; }
+    public DbSet<CashReceipt> CashReceipts { get; set; }
+    public DbSet<CashReceiptLine> CashReceiptLines { get; set; }
+    public DbSet<BankPayment> BankPayments { get; set; }
+    public DbSet<BankPaymentLine> BankPaymentLines { get; set; }
+    public DbSet<BankReceipt> BankReceipts { get; set; }
+    public DbSet<BankReceiptLine> BankReceiptLines { get; set; }
+    public DbSet<AccountBalance> AccountBalances { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -49,8 +56,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.FinancialStatementComponent).HasColumnName("financial_statement_component");
             entity.Property(e => e.Balance).HasColumnName("balance");
         });
-
-
         // USERS
         modelBuilder.Entity<User>(entity =>
         {
@@ -102,8 +107,6 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(up => up.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
-
-
         // ROLES
         modelBuilder.Entity<Role>(entity =>
         {
@@ -113,7 +116,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Description).HasColumnName("description");
         });
-
         // PERMISSIONS
         modelBuilder.Entity<Permission>(entity =>
         {
@@ -123,7 +125,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.Description).HasColumnName("description");
         });
-
         // ROLE-PERMISSIONS
         modelBuilder.Entity<RolePermission>(entity =>
         {
@@ -144,7 +145,6 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(rp => rp.PermissionId)
                 .HasConstraintName("fk_role_permissions_permission_id");  // Add constraint name
         });
-
         // USER-PERMISSIONS
         modelBuilder.Entity<UserPermission>(entity =>
         {
@@ -166,7 +166,6 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(up => up.PermissionId)
                 .HasConstraintName("fk_user_permissions_permission_id");  // Add constraint name
         });
-
         // BUYERS
         modelBuilder.Entity<Buyer>(entity =>
         {
@@ -191,7 +190,6 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.AccountId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
-
         // SUPPLIERS
         modelBuilder.Entity<Supplier>(entity =>
         {
@@ -224,7 +222,6 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.DodhiId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
-
         // TENANTS
         modelBuilder.Entity<Tenant>(entity =>
         {
@@ -237,7 +234,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Address).HasColumnName("address");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
-
         // MAIN ACCOUNT
         modelBuilder.Entity<MainAccount>(entity =>
         {
@@ -249,7 +245,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.FinancialStatementComponent).HasColumnName("financial_statement_component");
         });
-
         // SUB ACCOUNT
         modelBuilder.Entity<SubAccount>(entity =>
         {
@@ -261,7 +256,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.SubAccountCode).HasColumnName("sub_account_code");
             entity.Property(e => e.Name).HasColumnName("name");
         });
-
         // ACCOUNT
         modelBuilder.Entity<Account>(entity =>
         {
@@ -274,7 +268,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AccountCode).HasColumnName("account_code");
             entity.Property(e => e.Name).HasColumnName("name");
         });
-
         // EMPLOYEES
         modelBuilder.Entity<Employee>(entity =>
         {
@@ -404,7 +397,6 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.AddedBy);
         });
-
         //stockEntry
         modelBuilder.Entity<StockEntry>(entity =>
         {
@@ -454,8 +446,6 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-
-
         modelBuilder.Entity<Purchase>(entity =>
         {
             entity.ToTable("purchase");
@@ -492,8 +482,6 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.DodhiId);
         });
-
-
 
         modelBuilder.Entity<AccountOpeningBalance>(entity =>
         {
@@ -628,7 +616,6 @@ public class ApplicationDbContext : DbContext
             // journal_entry_lines_credit_check: credit >= 0
         });
 
-
         modelBuilder.Entity<CashPayment>(entity =>
         {
             entity.ToTable("cash_payments");
@@ -707,7 +694,295 @@ public class ApplicationDbContext : DbContext
             entity.ToTable(t => t.HasCheckConstraint("cash_payment_lines_amount_check", "amount >= 0"));
         });
 
+        modelBuilder.Entity<CashReceipt>(entity =>
+        {
+            entity.ToTable("cash_receipts");
+            entity.HasKey(e => e.CashReceiptId);
 
+            entity.Property(e => e.CashReceiptId).HasColumnName("cash_receipt_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.ReceiptNo).HasColumnName("receipt_no");
+            entity.Property(e => e.ReceiptDate).HasColumnName("receipt_date");
+            entity.Property(e => e.JobDescription).HasColumnName("job_description");
+            entity.Property(e => e.CashAccountId).HasColumnName("cash_account_id");
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.AddedBy).HasColumnName("added_by");
+            entity.Property(e => e.JournalEntryId).HasColumnName("journal_entry_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.CashAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.CashAccountId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.AddedBy)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.JournalEntry)
+                  .WithMany()
+                  .HasForeignKey(e => e.JournalEntryId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.CashReceiptLines)
+                  .WithOne(e => e.CashReceipt)
+                  .HasForeignKey(e => e.CashReceiptId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes
+            entity.HasIndex(e => new { e.TenantId, e.ReceiptDate })
+                  .HasDatabaseName("idx_cash_receipts_tenant_date");
+        });
+
+        modelBuilder.Entity<CashReceiptLine>(entity =>
+        {
+            entity.ToTable("cash_receipt_lines");
+            entity.HasKey(e => e.CashReceiptLineId);
+
+            entity.Property(e => e.CashReceiptLineId).HasColumnName("cash_receipt_line_id");
+            entity.Property(e => e.CashReceiptId).HasColumnName("cash_receipt_id");
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Amount).HasColumnName("amount").HasPrecision(18, 2);
+
+            // Relationships
+            entity.HasOne(e => e.CashReceipt)
+                  .WithMany(e => e.CashReceiptLines)
+                  .HasForeignKey(e => e.CashReceiptId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Indexes
+            entity.HasIndex(e => e.CashReceiptId)
+                  .HasDatabaseName("idx_cash_receipt_lines_receipt");
+
+            // Check constraint
+            entity.ToTable(t => t.HasCheckConstraint("cash_receipt_lines_amount_check", "amount >= 0"));
+        });
+
+        modelBuilder.Entity<BankPayment>(entity =>
+        {
+            entity.ToTable("bank_payments");
+            entity.HasKey(e => e.BankPaymentId);
+
+            entity.Property(e => e.BankPaymentId).HasColumnName("bank_payment_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.VoucherNo).HasColumnName("voucher_no");
+            entity.Property(e => e.PaymentDate).HasColumnName("payment_date");
+            entity.Property(e => e.JobDescription).HasColumnName("job_description");
+            entity.Property(e => e.BankAccountId).HasColumnName("bank_account_id");
+            entity.Property(e => e.ChequeNo).HasColumnName("cheque_no");
+            entity.Property(e => e.ChequeDate).HasColumnName("cheque_date");
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.AddedBy).HasColumnName("added_by");
+            entity.Property(e => e.JournalEntryId).HasColumnName("journal_entry_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.BankAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.BankAccountId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.AddedBy)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.JournalEntry)
+                  .WithMany()
+                  .HasForeignKey(e => e.JournalEntryId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.BankPaymentLines)
+                  .WithOne(e => e.BankPayment)
+                  .HasForeignKey(e => e.BankPaymentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes
+            entity.HasIndex(e => new { e.TenantId, e.PaymentDate })
+                  .HasDatabaseName("idx_bank_payments_tenant_date");
+        });
+
+        modelBuilder.Entity<BankPaymentLine>(entity =>
+        {
+            entity.ToTable("bank_payment_lines");
+            entity.HasKey(e => e.BankPaymentLineId);
+
+            entity.Property(e => e.BankPaymentLineId).HasColumnName("bank_payment_line_id");
+            entity.Property(e => e.BankPaymentId).HasColumnName("bank_payment_id");
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Amount).HasColumnName("amount").HasPrecision(18, 2);
+
+            // Relationships
+            entity.HasOne(e => e.BankPayment)
+                  .WithMany(e => e.BankPaymentLines)
+                  .HasForeignKey(e => e.BankPaymentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Indexes
+            entity.HasIndex(e => e.BankPaymentId)
+                  .HasDatabaseName("idx_bank_payment_lines_payment");
+
+            entity.HasIndex(e => e.AccountId)
+                  .HasDatabaseName("idx_bank_payment_lines_account");
+
+            // Check constraint
+            entity.ToTable(t => t.HasCheckConstraint("bank_payment_lines_amount_check", "amount >= 0"));
+        });
+
+        // =============================================
+        // BANK RECEIPTS
+        // =============================================
+        modelBuilder.Entity<BankReceipt>(entity =>
+        {
+            entity.ToTable("bank_receipts");
+            entity.HasKey(e => e.BankReceiptId);
+
+            entity.Property(e => e.BankReceiptId).HasColumnName("bank_receipt_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.ReceiptNo).HasColumnName("receipt_no");
+            entity.Property(e => e.ReceiptDate).HasColumnName("receipt_date");
+            entity.Property(e => e.JobDescription).HasColumnName("job_description");
+            entity.Property(e => e.BankAccountId).HasColumnName("bank_account_id");
+            entity.Property(e => e.InstrumentNo).HasColumnName("instrument_no");
+            entity.Property(e => e.InstrumentDate).HasColumnName("instrument_date");
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasPrecision(18, 2);
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.AddedBy).HasColumnName("added_by");
+            entity.Property(e => e.JournalEntryId).HasColumnName("journal_entry_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                  .WithMany()
+                  .HasForeignKey(e => e.TenantId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.BankAccount)
+                  .WithMany()
+                  .HasForeignKey(e => e.BankAccountId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.AddedBy)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(e => e.JournalEntry)
+                  .WithMany()
+                  .HasForeignKey(e => e.JournalEntryId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.BankReceiptLines)
+                  .WithOne(e => e.BankReceipt)
+                  .HasForeignKey(e => e.BankReceiptId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes
+            entity.HasIndex(e => new { e.TenantId, e.ReceiptDate })
+                  .HasDatabaseName("idx_bank_receipts_tenant_date");
+
+            entity.HasIndex(e => e.BankAccountId)
+                  .HasDatabaseName("idx_bank_receipts_bank_account");
+        });
+
+        modelBuilder.Entity<BankReceiptLine>(entity =>
+        {
+            entity.ToTable("bank_receipt_lines");
+            entity.HasKey(e => e.BankReceiptLineId);
+
+            entity.Property(e => e.BankReceiptLineId).HasColumnName("bank_receipt_line_id");
+            entity.Property(e => e.BankReceiptId).HasColumnName("bank_receipt_id");
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Amount).HasColumnName("amount").HasPrecision(18, 2);
+
+            // Relationships
+            entity.HasOne(e => e.BankReceipt)
+                  .WithMany(e => e.BankReceiptLines)
+                  .HasForeignKey(e => e.BankReceiptId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Account)
+                  .WithMany()
+                  .HasForeignKey(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            // Indexes
+            entity.HasIndex(e => e.BankReceiptId)
+                  .HasDatabaseName("idx_bank_receipt_lines_receipt");
+
+            entity.HasIndex(e => e.AccountId)
+                  .HasDatabaseName("idx_bank_receipt_lines_account");
+
+            // Check constraint
+            entity.ToTable(t => t.HasCheckConstraint("bank_receipt_lines_amount_check", "amount >= 0"));
+        });
+
+        //account balance
+        // In ApplicationDbContext.cs, add this configuration in OnModelCreating method
+
+        modelBuilder.Entity<AccountBalance>(entity =>
+        {
+            entity.ToTable("account_balances");
+            entity.HasKey(e => e.AccountId);
+
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.DebitTotal)
+                .HasColumnName("debit_total")
+                .HasColumnType("numeric(18, 2)")
+                .HasDefaultValue(0);
+            entity.Property(e => e.CreditTotal)
+                .HasColumnName("credit_total")
+                .HasColumnType("numeric(18, 2)")
+                .HasDefaultValue(0);
+            entity.Property(e => e.LastUpdated)
+                .HasColumnName("last_updated")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Relationships
+            entity.HasOne(e => e.Account)
+                .WithOne()
+                .HasForeignKey<AccountBalance>(e => e.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes
+            entity.HasIndex(e => new { e.TenantId, e.LastUpdated })
+                .HasDatabaseName("idx_account_balances_tenant_updated");
+            entity.HasIndex(e => e.AccountId)
+                .HasDatabaseName("idx_account_balances_account");
+        });
 
 
     }

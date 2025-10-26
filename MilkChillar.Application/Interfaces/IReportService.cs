@@ -25,5 +25,10 @@ namespace MilkChillar.Application.Interfaces
         );
 
         Task<List<SaleDto>> GetSalesReportAsync(SalesReportQuery query, int tenantId); // ✅ New method
+
+        // In Application/Interfaces/IReportService.cs
+        Task<AdminDashboardStatsDto> GetAdminDashboardStatsAsync(int tenantId);
+        Task<PagedAccountBalancesDto> GetAccountBalancesAsync(string accountType, int tenantId, int pageNumber = 1, int pageSize = 25);
+        Task<AccountBalanceSummaryDto> GetAccountBalanceSummaryAsync(string accountType, int tenantId);
     }
 }

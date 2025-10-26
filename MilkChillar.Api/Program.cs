@@ -1,5 +1,4 @@
 ﻿
-
 //using Microsoft.AspNetCore.Authentication.JwtBearer;
 //using Microsoft.IdentityModel.Tokens;
 //using System.Text;
@@ -93,7 +92,8 @@
 //        "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
 //        "stock.create", "stock.read", "stock.update", "stock.delete",
 //        "openingBalance.read", "openingBalance.create", "openingBalance.update", "openingBalance.delete",
-//        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read",
+//        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read"
+//        ,"profitloss.read","roznamcha.read"
 //    };
 
 //    foreach (var permission in permissions)
@@ -123,6 +123,8 @@
 //builder.Services.AddScoped<ICashPaymentService, CashPaymentService>();
 //builder.Services.AddScoped<IAccountLedgerService, AccountLedgerService>();
 //builder.Services.AddScoped<IParchiService, ParchiService>();
+//builder.Services.AddScoped<IProfitLossService, ProfitLossService>();
+//builder.Services.AddScoped<IRoznamchaService, RoznamchaService>();
 
 //builder.Services.AddControllers();
 //builder.Services.AddEndpointsApiExplorer();
@@ -272,7 +274,7 @@ builder.Services.AddAuthorization(options =>
         "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
         "stock.create", "stock.read", "stock.update", "stock.delete",
         "openingBalance.read", "openingBalance.create", "openingBalance.update", "openingBalance.delete",
-        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read",
+        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read","profitloss.read","roznamcha.read"
     };
 
     foreach (var permission in permissions)
@@ -301,6 +303,8 @@ builder.Services.AddScoped<IAccountOpeningBalanceService, AccountOpeningBalanceS
 builder.Services.AddScoped<ICashPaymentService, CashPaymentService>();
 builder.Services.AddScoped<IAccountLedgerService, AccountLedgerService>();
 builder.Services.AddScoped<IParchiService, ParchiService>();
+builder.Services.AddScoped<IProfitLossService, ProfitLossService>();
+builder.Services.AddScoped<IRoznamchaService, RoznamchaService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

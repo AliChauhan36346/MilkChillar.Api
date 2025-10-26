@@ -488,5 +488,233 @@ namespace MilkChillar.Infrastructure.Services
             return result;
         }
 
+        // Add these methods to your ReportService class
+
+        // Add these methods to your ReportService class
+
+        public async Task<AdminDashboardStatsDto> GetAdminDashboardStatsAsync(int tenantId)
+        {
+            var today = DateTime.SpecifyKind(DateTime.Today.Date,DateTimeKind.Utc);
+
+            // Get Cash Account Balance (account code starts with 110)
+            var cashBalance = await _dbContext.AccountBalances
+                .Include(ab => ab.Account)
+                .Where(ab => ab.TenantId == tenantId && ab.Account.AccountCode.StartsWith("110"))
+                .Select(ab => ab.DebitTotal - ab.CreditTotal)
+                .FirstOrDefaultAsync();
+
+            // Get Bank Account Balance (account code starts with 120)
+            var bankBalance = await _dbContext.AccountBalances
+                .Include(ab => ab.Account)
+                .Where(ab => ab.TenantId == tenantId && ab.Account.AccountCode.StartsWith("120"))
+                .Select(ab => ab.DebitTotal - ab.CreditTotal)
+                .FirstOrDefaultAsync();
+
+            // Today's Cash Change from Journal Lines (accounts starting with 110)
+            var cashAccountIds = await _dbContext.Accounts
+                .Where(a => a.TenantId == tenantId && a.AccountCode.StartsWith("110"))
+                .Select(a => a.AccountId)
+                .ToListAsync();
+
+            var todayCashDebits = await _dbContext.JournalEntryLines
+                .Include(jel => jel.JournalEntry)
+                .Where(jel => jel.JournalEntry.TenantId == tenantId &&
+                              jel.JournalEntry.EntryDate == today &&
+                              cashAccountIds.Contains(jel.AccountId) &&
+                              jel.Debit > 0)
+                .SumAsync(jel => (decimal?)jel.Debit) ?? 0;
+
+            var todayCashCredits = await _dbContext.JournalEntryLines
+                .Include(jel => jel.JournalEntry)
+                .Where(jel => jel.JournalEntry.TenantId == tenantId &&
+                              jel.JournalEntry.EntryDate == today &&
+                              cashAccountIds.Contains(jel.AccountId) &&
+                              jel.Credit > 0)
+                .SumAsync(jel => (decimal?)jel.Credit) ?? 0;
+
+            var todayCashChange = todayCashDebits - todayCashCredits;
+
+            // Today's Bank Change from Journal Lines (accounts starting with 120)
+            var bankAccountIds = await _dbContext.Accounts
+                .Where(a => a.TenantId == tenantId && a.AccountCode.StartsWith("120"))
+                .Select(a => a.AccountId)
+                .ToListAsync();
+
+            var todayBankDebits = await _dbContext.JournalEntryLines
+                .Include(jel => jel.JournalEntry)
+                .Where(jel => jel.JournalEntry.TenantId == tenantId &&
+                              jel.JournalEntry.EntryDate == today &&
+                              bankAccountIds.Contains(jel.AccountId) &&
+                              jel.Debit > 0)
+                .SumAsync(jel => (decimal?)jel.Debit) ?? 0;
+
+            var todayBankCredits = await _dbContext.JournalEntryLines
+                .Include(jel => jel.JournalEntry)
+                .Where(jel => jel.JournalEntry.TenantId == tenantId &&
+                              jel.JournalEntry.EntryDate == today &&
+                              bankAccountIds.Contains(jel.AccountId) &&
+                              jel.Credit > 0)
+                .SumAsync(jel => (decimal?)jel.Credit) ?? 0;
+
+            var todayBankChange = todayBankDebits - todayBankCredits;
+
+            // Pending Payments to Suppliers (account code starts with 200)
+            // Suppliers with Credit > Debit means we owe them
+            var supplierBalances = await _dbContext.AccountBalances
+                .Include(ab => ab.Account)
+                .Where(ab => ab.TenantId == tenantId &&
+                             ab.Account.AccountCode.StartsWith("200")
+                             &&
+                             ab.CreditTotal > ab.DebitTotal)
+                .ToListAsync();
+
+            var pendingPayments = supplierBalances.Sum(ab => ab.CreditTotal - ab.DebitTotal);
+            var pendingPaymentsCount = supplierBalances.Count;
+
+            // Due Receipts from Buyers (account code starts with 100)
+            // Buyers with Debit > Credit means they owe us
+            var buyerBalances = await _dbContext.AccountBalances
+                .Include(ab => ab.Account)
+                .Where(ab => ab.TenantId == tenantId &&
+                             ab.Account.AccountCode.StartsWith("100") &&
+                             ab.DebitTotal > ab.CreditTotal)
+                .ToListAsync();
+
+            var dueReceipts = buyerBalances.Sum(ab => ab.DebitTotal - ab.CreditTotal);
+            var dueReceiptsCount = buyerBalances.Count;
+
+            return new AdminDashboardStatsDto
+            {
+                CashBalance = cashBalance,
+                BankBalance = bankBalance,
+                PendingPayments = pendingPayments,
+                PendingPaymentsCount = pendingPaymentsCount,
+                DueReceipts = dueReceipts,
+                DueReceiptsCount = dueReceiptsCount,
+                TodayCashChange = todayCashChange,
+                TodayBankChange = todayBankChange
+            };
+        }
+
+        public async Task<PagedAccountBalancesDto> GetAccountBalancesAsync(
+            string accountType,
+            int tenantId,
+            int pageNumber = 1,
+            int pageSize = 25)
+        {
+            // Determine account code prefix based on type
+            string accountCodePrefix;
+            bool isSupplier = false;
+
+            switch (accountType.ToLower())
+            {
+                case "supplier":
+                    accountCodePrefix = "200";
+                    isSupplier = true;
+                    break;
+                case "buyer":
+                    accountCodePrefix = "100";
+                    break;
+                case "cash":
+                    accountCodePrefix = "110";
+                    break;
+                case "bank":
+                    accountCodePrefix = "120";
+                    break;
+                default:
+                    throw new ArgumentException("Account type must be 'Supplier', 'Buyer', 'Cash', or 'Bank'");
+            }
+
+            var query = _dbContext.AccountBalances
+                .Include(ab => ab.Account)
+                .Where(ab => ab.TenantId == tenantId &&
+                             ab.Account.AccountCode.StartsWith(accountCodePrefix));
+
+            // Get total count
+            var totalCount = await query.CountAsync();
+
+            // Get paged data
+            var balances = await query
+                .OrderByDescending(ab => Math.Abs(ab.DebitTotal - ab.CreditTotal))
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(ab => new AccountBalanceDetailDto
+                {
+                    AccountId = ab.AccountId,
+                    AccountCode = ab.Account.AccountCode,
+                    AccountName = ab.Account.Name,
+                    AccountType = accountType,
+                    DebitTotal = ab.DebitTotal,
+                    CreditTotal = ab.CreditTotal,
+                    Balance = isSupplier
+                        ? ab.CreditTotal - ab.DebitTotal  // Suppliers: Credit - Debit (we owe them)
+                        : ab.DebitTotal - ab.CreditTotal,  // Buyers/Cash/Bank: Debit - Credit
+                    LastUpdated = ab.LastUpdated
+                })
+                .ToListAsync();
+
+            // Get summary
+            var summary = await GetAccountBalanceSummaryAsync(accountType, tenantId);
+
+            return new PagedAccountBalancesDto
+            {
+                Balances = balances,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                Summary = summary
+            };
+        }
+
+        public async Task<AccountBalanceSummaryDto> GetAccountBalanceSummaryAsync(
+            string accountType,
+            int tenantId)
+        {
+            // Determine account code prefix based on type
+            string accountCodePrefix;
+            bool isSupplier = false;
+
+            switch (accountType.ToLower())
+            {
+                case "supplier":
+                    accountCodePrefix = "200";
+                    isSupplier = true;
+                    break;
+                case "buyer":
+                    accountCodePrefix = "100";
+                    break;
+                case "cash":
+                    accountCodePrefix = "110";
+                    break;
+                case "bank":
+                    accountCodePrefix = "120";
+                    break;
+                default:
+                    throw new ArgumentException("Account type must be 'Supplier', 'Buyer', 'Cash', or 'Bank'");
+            }
+
+            var balances = await _dbContext.AccountBalances
+                .Include(ab => ab.Account)
+                .Where(ab => ab.TenantId == tenantId &&
+                             ab.Account.AccountCode.StartsWith(accountCodePrefix))
+                .ToListAsync();
+
+            var totalDebit = balances.Sum(ab => ab.DebitTotal);
+            var totalCredit = balances.Sum(ab => ab.CreditTotal);
+            var netBalance = isSupplier
+                ? totalCredit - totalDebit  // We owe suppliers
+                : totalDebit - totalCredit;  // Others owe us or our balance
+
+            return new AccountBalanceSummaryDto
+            {
+                AccountType = accountType,
+                TotalDebit = totalDebit,
+                TotalCredit = totalCredit,
+                NetBalance = netBalance,
+                AccountCount = balances.Count
+            };
+        }
+
     }
 }
