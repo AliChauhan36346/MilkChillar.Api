@@ -30,5 +30,14 @@ namespace MilkChillar.Application.Interfaces
         Task<AdminDashboardStatsDto> GetAdminDashboardStatsAsync(int tenantId);
         Task<PagedAccountBalancesDto> GetAccountBalancesAsync(string accountType, int tenantId, int pageNumber = 1, int pageSize = 25);
         Task<AccountBalanceSummaryDto> GetAccountBalanceSummaryAsync(string accountType, int tenantId);
+
+        // Purchase Reports
+        Task<PagedPurchaseReportDto> GetDetailedPurchaseReportAsync(PurchaseReportQuery query, int tenantId);
+        Task<PurchaseReportSummaryDto> GetPurchaseReportSummaryAsync(PurchaseReportQuery query, int tenantId);
+        Task<SupplierWisePurchaseReportDto> GetSupplierWisePurchaseReportAsync(PurchaseReportQuery query, int tenantId);
+
+        // Sales Reports
+        Task<BuyerWiseSalesReportDto> GetBuyerWiseSalesReportAsync(SalesReportQuery query, int tenantId);
+        Task<SalesReportSummaryDto> GetSalesReportSummaryAsync(SalesReportQuery query, int tenantId);
     }
 }

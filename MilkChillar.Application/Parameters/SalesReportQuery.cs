@@ -11,6 +11,7 @@ namespace MilkChillar.Application.Parameters
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
         public string? BuyerCode { get; set; }
+        public int? AccountId { get; set; }
         public int? ChillarId { get; set; }
     }
 }

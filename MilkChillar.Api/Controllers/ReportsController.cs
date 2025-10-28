@@ -141,6 +141,64 @@ namespace MilkChillar.Api.Controllers
             }
         }
 
+
+        // Purchase Report Endpoints
+        [HttpGet("GetDetailedPurchaseReport")]
+        public async Task<IActionResult> GetDetailedPurchaseReport([FromQuery] PurchaseReportQuery query)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var result = await _dashboardStatsService.GetDetailedPurchaseReportAsync(query, tenantId);
+            return Ok(result);
+        }
+
+        [HttpGet("GetPurchaseReportSummary")]
+        public async Task<IActionResult> GetPurchaseReportSummary([FromQuery] PurchaseReportQuery query)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var result = await _dashboardStatsService.GetPurchaseReportSummaryAsync(query, tenantId);
+            return Ok(result);
+        }
+
+        [HttpGet("GetSupplierWisePurchaseReport")]
+        public async Task<IActionResult> GetSupplierWisePurchaseReport([FromQuery] PurchaseReportQuery query)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var result = await _dashboardStatsService.GetSupplierWisePurchaseReportAsync(query, tenantId);
+            return Ok(result);
+        }
+
+        // Sales Report Endpoints
+        [HttpGet("GetBuyerWiseSalesReport")]
+        public async Task<IActionResult> GetBuyerWiseSalesReport([FromQuery] SalesReportQuery query)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var result = await _dashboardStatsService.GetBuyerWiseSalesReportAsync(query, tenantId);
+            return Ok(result);
+        }
+
+        [HttpGet("GetSalesReportSummary")]
+        public async Task<IActionResult> GetSalesReportSummary([FromQuery] SalesReportQuery query)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var result = await _dashboardStatsService.GetSalesReportSummaryAsync(query, tenantId);
+            return Ok(result);
+        }
+
     }
 
 }

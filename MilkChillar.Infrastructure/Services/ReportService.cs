@@ -2,16 +2,12 @@
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Application;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MilkChillar.Application.DTOs.ChillarReceive;
 using MilkChillar.Application.DTOs.Purchase;
 using MilkChillar.Application.DTOs.Reports;
 using MilkChillar.Application.DTOs.Sales;
+using MilkChillar.Application.Responses;
 
 namespace MilkChillar.Infrastructure.Services
 {
@@ -157,89 +153,6 @@ namespace MilkChillar.Infrastructure.Services
                 Receives = receiveDtos
             };
         }
-
-        //    public async Task<ChillarInchargeDashboardStatsDto> GetChillarInchargeDashboardStatsAsync(
-        //ChillarInchargeDashboardQuery query,
-        //int tenantId)
-        //    {
-        //        var receives = _dbContext.ChillarReceives.AsQueryable();
-        //        var sales = _dbContext.Sales.AsQueryable();
-
-        //        // Filter by tenant
-        //        receives = receives.Where(r => r.TenantId == tenantId);
-        //        sales = sales.Where(s => s.TenantId == tenantId);
-
-        //        // ChillarId filter
-        //        if (query.ChillarId.HasValue)
-        //        {
-        //            receives = receives.Where(r => r.ChillarId == query.ChillarId.Value);
-        //            sales = sales.Where(s => s.ChillarId == query.ChillarId.Value);
-        //        }
-
-        //        // ChillarIncharge filter
-        //        if (query.ChillarInchargeId.HasValue)
-        //        {
-        //            receives = receives.Where(r => r.ChillarInchargeId == query.ChillarInchargeId.Value);
-        //            // Sales don't have incharge directly — only filtered by chillarId
-        //        }
-
-        //        // Previous stock calculation
-        //        var prevReceivesQuery = receives.Where(r => r.Date < query.StartDate);
-        //        var prevSalesQuery = sales.Where(s => s.Date < query.StartDate);
-
-        //        // If StartTimeOfDay = "evening", also include only morning receives of StartDate in prev stock
-        //        if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "evening")
-        //        {
-        //            prevReceivesQuery = prevReceivesQuery
-        //                .Concat(receives.Where(r => r.Date == query.StartDate && r.TimeOfDay.ToLower() == "morning"));
-        //            // Sales from StartDate are NOT included in prev stock in this case
-        //        }
-        //        else if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && query.StartTimeOfDay.ToLower() == "morning")
-        //        {
-        //            // Include morning receives of that day in range, sales are part of selected range
-        //        }
-
-        //        var previousStockLiters =
-        //            await prevReceivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m
-        //            - await prevSalesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
-
-        //        // Selected range filter for receives
-        //        var receivesQuery = receives.Where(r =>
-        //            (r.Date > query.StartDate && r.Date < query.EndDate) ||
-        //            (r.Date == query.StartDate &&
-        //                (string.IsNullOrWhiteSpace(query.StartTimeOfDay)
-        //                 || r.TimeOfDay.ToLower() == query.StartTimeOfDay.ToLower()
-        //                 || query.StartTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning"
-        //                 || query.StartTimeOfDay.ToLower() == "evening" && r.TimeOfDay.ToLower() == "evening")) ||
-        //            (r.Date == query.EndDate &&
-        //                (string.IsNullOrWhiteSpace(query.EndTimeOfDay)
-        //                 || query.EndTimeOfDay.ToLower() == "evening"
-        //                 || (query.EndTimeOfDay.ToLower() == "morning" && r.TimeOfDay.ToLower() == "morning")))
-        //        );
-
-        //        // Selected range filter for sales
-        //        var salesQuery = sales.Where(s =>
-        //            (s.Date > query.StartDate && s.Date < query.EndDate) ||
-        //            (s.Date == query.EndDate) ||
-        //            (s.Date == query.StartDate &&
-        //                (string.IsNullOrWhiteSpace(query.StartTimeOfDay) || query.StartTimeOfDay.ToLower() == "morning"))
-        //        );
-
-        //        var totalReceives = await receivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
-        //        var totalSales = await salesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
-
-        //        var currentStock = (previousStockLiters + totalReceives) - totalSales;
-
-        //        return new ChillarInchargeDashboardStatsDto
-        //        {
-        //            PreviousStock = previousStockLiters,
-        //            TotalChillarReceive = totalReceives,
-        //            TotalSales = totalSales,
-        //            CurrentStock = currentStock
-        //        };
-        //    }
-
-
 
         public async Task<ChillarInchargeDashboardStatsDto> GetChillarInchargeDashboardStatsAsync(
     ChillarInchargeDashboardQuery query,
@@ -488,9 +401,6 @@ namespace MilkChillar.Infrastructure.Services
             return result;
         }
 
-        // Add these methods to your ReportService class
-
-        // Add these methods to your ReportService class
 
         public async Task<AdminDashboardStatsDto> GetAdminDashboardStatsAsync(int tenantId)
         {
@@ -713,6 +623,394 @@ namespace MilkChillar.Infrastructure.Services
                 TotalCredit = totalCredit,
                 NetBalance = netBalance,
                 AccountCount = balances.Count
+            };
+        }
+
+
+        // UPDATED - Remove summary calculation from this method
+        public async Task<PagedPurchaseReportDto> GetDetailedPurchaseReportAsync(
+            PurchaseReportQuery query,
+            int tenantId)
+        {
+            var purchasesQuery = _dbContext.Purchases
+                .Include(p => p.Account)
+                .Include(p => p.ExpenseAccount)
+                .Include(p => p.Dodhi)
+                    .ThenInclude(d => d.Chillar)
+                .Where(p => p.TenantId == tenantId &&
+                            p.Date >= DateOnly.FromDateTime(query.StartDate) &&
+                            p.Date <= DateOnly.FromDateTime(query.EndDate));
+
+            // Time of Day filter
+            if (!string.IsNullOrWhiteSpace(query.TimeOfDay))
+            {
+                var time = query.TimeOfDay.ToLower();
+                if (time == "morning" || time == "evening")
+                {
+                    purchasesQuery = purchasesQuery.Where(p => p.TimeOfDay.ToLower() == time);
+                }
+            }
+
+            // Dodhi filter
+            if (query.DodhiId.HasValue)
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.DodhiId == query.DodhiId.Value);
+            }
+
+            // Chillar filter
+            if (query.ChillarId.HasValue)
+            {
+                var chillarId = query.ChillarId.Value;
+                var dodhiIds = await _dbContext.Employees
+                    .Where(e => e.TenantId == tenantId && e.ChillarId == chillarId)
+                    .Select(e => e.EmployeeId)
+                    .ToListAsync();
+
+                purchasesQuery = purchasesQuery.Where(p => dodhiIds.Contains(p.DodhiId));
+            }
+
+            // Supplier code filter
+            if (!string.IsNullOrWhiteSpace(query.SupplierCode))
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.Account.AccountCode == query.SupplierCode);
+            }
+
+            // Get total count
+            var totalCount = await purchasesQuery.CountAsync();
+
+            // Get paginated purchases
+            var purchases = await purchasesQuery
+                .OrderBy(p => p.Date)
+                .ThenBy(p => p.TimeOfDay)
+                .ThenBy(p => p.Account.Name)
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(p => new PurchaseDetailDto
+                {
+                    PurchaseId = p.PurchaseId,
+                    Date = p.Date.ToDateTime(TimeOnly.MinValue),
+                    TimeOfDay = p.TimeOfDay,
+                    AccountCode = p.Account.AccountCode,
+                    AccountName = p.Account.Name,
+                    ExpenseAccountName = p.ExpenseAccount.Name,
+                    DodhiName = p.Dodhi.FullName,
+                    DodhiId = p.DodhiId,
+                    ChillarName = p.Dodhi.Chillar != null ? p.Dodhi.Chillar.Name : "",
+                    GrossLiters = p.GrossLiters,
+                    Rate = p.Rate,
+                    TotalAmount = p.GrossLiters * p.Rate,
+                    Balance = p.Balance
+                })
+                .ToListAsync();
+
+            return new PagedPurchaseReportDto
+            {
+                PaginatedPurchases = new PaginatedResult<PurchaseDetailDto>
+                {
+                    Items = purchases,
+                    TotalCount = totalCount,
+                    PageNumber = query.PageNumber,
+                    PageSize = query.PageSize
+                }
+            };
+        }
+
+        // NEW - Separate summary endpoint
+        public async Task<PurchaseReportSummaryDto> GetPurchaseReportSummaryAsync(
+            PurchaseReportQuery query,
+            int tenantId)
+        {
+            var purchasesQuery = _dbContext.Purchases
+                .Where(p => p.TenantId == tenantId &&
+                            p.Date >= DateOnly.FromDateTime(query.StartDate) &&
+                            p.Date <= DateOnly.FromDateTime(query.EndDate));
+
+            // Apply same filters as detailed report
+            if (!string.IsNullOrWhiteSpace(query.TimeOfDay))
+            {
+                var time = query.TimeOfDay.ToLower();
+                if (time == "morning" || time == "evening")
+                {
+                    purchasesQuery = purchasesQuery.Where(p => p.TimeOfDay.ToLower() == time);
+                }
+            }
+
+            if (query.DodhiId.HasValue)
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.DodhiId == query.DodhiId.Value);
+            }
+
+            if (query.ChillarId.HasValue)
+            {
+                var chillarId = query.ChillarId.Value;
+                var dodhiIds = await _dbContext.Employees
+                    .Where(e => e.TenantId == tenantId && e.ChillarId == chillarId)
+                    .Select(e => e.EmployeeId)
+                    .ToListAsync();
+
+                purchasesQuery = purchasesQuery.Where(p => dodhiIds.Contains(p.DodhiId));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.SupplierCode))
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.Account.AccountCode == query.SupplierCode);
+            }
+
+            // Calculate summary in single query
+            var summaryData = await purchasesQuery
+                .GroupBy(p => 1)
+                .Select(g => new
+                {
+                    TotalLiters = g.Sum(p => p.GrossLiters),
+                    TotalAmount = g.Sum(p => p.GrossLiters * p.Rate),
+                    TotalTransactions = g.Count(),
+                    TotalSuppliers = g.Select(p => p.AccountId).Distinct().Count()
+                })
+                .FirstOrDefaultAsync();
+
+            var summary = new PurchaseReportSummaryDto
+            {
+                TotalLiters = summaryData?.TotalLiters ?? 0,
+                TotalAmount = summaryData?.TotalAmount ?? 0,
+                TotalTransactions = summaryData?.TotalTransactions ?? 0,
+                TotalSuppliers = summaryData?.TotalSuppliers ?? 0
+            };
+
+            summary.AverageRate = summary.TotalLiters > 0
+                ? summary.TotalAmount / summary.TotalLiters
+                : 0;
+
+            return summary;
+        }
+
+        // NEW - Buyer-wise sales report
+        public async Task<BuyerWiseSalesReportDto> GetBuyerWiseSalesReportAsync(
+            SalesReportQuery query,
+            int tenantId)
+        {
+            var salesQuery = _dbContext.Sales
+                .Include(s => s.Account)
+                .Where(s => s.TenantId == tenantId &&
+                            s.Date >= query.StartDate &&
+                            s.Date <= query.EndDate);
+
+            // Account (Buyer) filter
+            if (query.AccountId.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.AccountId == query.AccountId.Value);
+            }
+
+            // Chillar filter
+            if (query.ChillarId.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.ChillarId == query.ChillarId.Value);
+            }
+
+            // Group by buyer and calculate summaries
+            var buyerSummaries = await salesQuery
+                .GroupBy(s => new { s.AccountId, s.Account.AccountCode, s.Account.Name })
+                .Select(g => new BuyerSalesSummaryDto
+                {
+                    AccountId = g.Key.AccountId,
+                    AccountCode = g.Key.AccountCode,
+                    AccountName = g.Key.Name,
+                    TotalGrossLiters = g.Sum(s => s.GrossLiters),
+                    TotalNetLiters = g.Sum(s => s.NetLiters),
+                    TotalAmount = g.Sum(s => s.NetLiters * s.Rate),
+                    TotalAmountReceived = g.Sum(s => s.AmountReceived),
+                    AverageLR = g.Average(s => s.LR ?? 0),
+                    AverageFat = g.Average(s => s.Fat ?? 0),
+                    TransactionCount = g.Count(),
+                    Balance = g.OrderByDescending(s => s.Date)
+                               .Select(s => s.Balance)
+                               .FirstOrDefault()
+                })
+                .OrderByDescending(b => b.TotalAmount)
+                .ToListAsync();
+
+            // Calculate average rate for each buyer
+            foreach (var buyer in buyerSummaries)
+            {
+                buyer.AverageRate = buyer.TotalNetLiters > 0
+                    ? buyer.TotalAmount / buyer.TotalNetLiters
+                    : 0;
+            }
+
+            // Calculate overall summary
+            var overallSummary = new SalesReportSummaryDto
+            {
+                TotalGrossLiters = buyerSummaries.Sum(b => b.TotalGrossLiters),
+                TotalNetLiters = buyerSummaries.Sum(b => b.TotalNetLiters),
+                TotalAmount = buyerSummaries.Sum(b => b.TotalAmount),
+                TotalAmountReceived = buyerSummaries.Sum(b => b.TotalAmountReceived),
+                TotalBalance = buyerSummaries.Sum(b => b.Balance),
+                TotalTransactions = buyerSummaries.Sum(b => b.TransactionCount),
+                TotalBuyers = buyerSummaries.Count
+            };
+
+            overallSummary.AverageRate = overallSummary.TotalNetLiters > 0
+                ? overallSummary.TotalAmount / overallSummary.TotalNetLiters
+                : 0;
+
+            overallSummary.AverageLR = buyerSummaries.Count > 0
+                ? buyerSummaries.Average(b => b.AverageLR)
+                : 0;
+
+            overallSummary.AverageFat = buyerSummaries.Count > 0
+                ? buyerSummaries.Average(b => b.AverageFat)
+                : 0;
+
+            return new BuyerWiseSalesReportDto
+            {
+                BuyerSummaries = buyerSummaries,
+                OverallSummary = overallSummary
+            };
+        }
+
+        // NEW - Sales report summary
+        public async Task<SalesReportSummaryDto> GetSalesReportSummaryAsync(
+            SalesReportQuery query,
+            int tenantId)
+        {
+            var salesQuery = _dbContext.Sales
+                .Where(s => s.TenantId == tenantId &&
+                            s.Date >= query.StartDate &&
+                            s.Date <= query.EndDate);
+
+            if (query.AccountId.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.AccountId == query.AccountId.Value);
+            }
+
+            if (query.ChillarId.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.ChillarId == query.ChillarId.Value);
+            }
+
+            var summaryData = await salesQuery
+                .GroupBy(s => 1)
+                .Select(g => new
+                {
+                    TotalGrossLiters = g.Sum(s => s.GrossLiters),
+                    TotalNetLiters = g.Sum(s => s.NetLiters),
+                    TotalAmount = g.Sum(s => s.NetLiters * s.Rate),
+                    TotalAmountReceived = g.Sum(s => s.AmountReceived),
+                    AverageLR = g.Average(s => s.LR ?? 0),
+                    AverageFat = g.Average(s => s.Fat ?? 0),
+                    TotalTransactions = g.Count(),
+                    TotalBuyers = g.Select(s => s.AccountId).Distinct().Count(),
+                    TotalBalance = g.Sum(s => s.Balance)
+                })
+                .FirstOrDefaultAsync();
+
+            var summary = new SalesReportSummaryDto
+            {
+                TotalGrossLiters = summaryData?.TotalGrossLiters ?? 0,
+                TotalNetLiters = summaryData?.TotalNetLiters ?? 0,
+                TotalAmount = summaryData?.TotalAmount ?? 0,
+                TotalAmountReceived = summaryData?.TotalAmountReceived ?? 0,
+                TotalBalance = summaryData?.TotalBalance ?? 0,
+                AverageLR = summaryData?.AverageLR ?? 0,
+                AverageFat = summaryData?.AverageFat ?? 0,
+                TotalTransactions = summaryData?.TotalTransactions ?? 0,
+                TotalBuyers = summaryData?.TotalBuyers ?? 0
+            };
+
+            summary.AverageRate = summary.TotalNetLiters > 0
+                ? summary.TotalAmount / summary.TotalNetLiters
+                : 0;
+
+            return summary;
+        }
+
+        public async Task<SupplierWisePurchaseReportDto> GetSupplierWisePurchaseReportAsync(
+            PurchaseReportQuery query,
+            int tenantId)
+        {
+            var purchasesQuery = _dbContext.Purchases
+                .Include(p => p.Account)
+                .Where(p => p.TenantId == tenantId &&
+                            p.Date >= DateOnly.FromDateTime(query.StartDate) &&
+                            p.Date <= DateOnly.FromDateTime(query.EndDate));
+
+            // Time of Day filter
+            if (!string.IsNullOrWhiteSpace(query.TimeOfDay))
+            {
+                var time = query.TimeOfDay.ToLower();
+                if (time == "morning" || time == "evening")
+                {
+                    purchasesQuery = purchasesQuery.Where(p => p.TimeOfDay.ToLower() == time);
+                }
+            }
+
+            // Dodhi filter
+            if (query.DodhiId.HasValue)
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.DodhiId == query.DodhiId.Value);
+            }
+
+            // Chillar filter (through dodhi association)
+            if (query.ChillarId.HasValue)
+            {
+                var chillarId = query.ChillarId.Value;
+                var dodhiIds = await _dbContext.Employees
+                    .Where(e => e.TenantId == tenantId && e.ChillarId == chillarId)
+                    .Select(e => e.EmployeeId)
+                    .ToListAsync();
+
+                purchasesQuery = purchasesQuery.Where(p => dodhiIds.Contains(p.DodhiId));
+            }
+
+            // Supplier code filter
+            if (!string.IsNullOrWhiteSpace(query.SupplierCode))
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.Account.AccountCode == query.SupplierCode);
+            }
+
+            // Group by supplier and calculate summaries
+            var supplierSummaries = await purchasesQuery
+                .GroupBy(p => new { p.AccountId, p.Account.AccountCode, p.Account.Name })
+                .Select(g => new SupplierPurchaseSummaryDto
+                {
+                    AccountId = g.Key.AccountId,
+                    AccountCode = g.Key.AccountCode,
+                    AccountName = g.Key.Name,
+                    TotalLiters = g.Sum(p => p.GrossLiters),
+                    TotalAmount = g.Sum(p => p.GrossLiters * p.Rate),
+                    TransactionCount = g.Count(),
+                    Balance = g.OrderByDescending(p => p.Date)
+                               .ThenByDescending(p => p.TimeOfDay)
+                               .Select(p => p.Balance)
+                               .FirstOrDefault()
+                })
+                .OrderByDescending(s => s.TotalAmount)
+                .ToListAsync();
+
+            // Calculate average rate for each supplier
+            foreach (var supplier in supplierSummaries)
+            {
+                supplier.AverageRate = supplier.TotalLiters > 0
+                    ? supplier.TotalAmount / supplier.TotalLiters
+                    : 0;
+            }
+
+            // Calculate overall summary
+            var overallSummary = new PurchaseReportSummaryDto
+            {
+                TotalLiters = supplierSummaries.Sum(s => s.TotalLiters),
+                TotalAmount = supplierSummaries.Sum(s => s.TotalAmount),
+                TotalTransactions = supplierSummaries.Sum(s => s.TransactionCount),
+                TotalSuppliers = supplierSummaries.Count
+            };
+
+            overallSummary.AverageRate = overallSummary.TotalLiters > 0
+                ? overallSummary.TotalAmount / overallSummary.TotalLiters
+                : 0;
+
+            return new SupplierWisePurchaseReportDto
+            {
+                SupplierSummaries = supplierSummaries,
+                OverallSummary = overallSummary
             };
         }
 
