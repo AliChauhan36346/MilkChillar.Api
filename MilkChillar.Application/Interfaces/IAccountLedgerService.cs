@@ -35,5 +35,8 @@ namespace MilkChillar.Application.Interfaces
         /// Get all accounts with their current balances
         /// </summary>
         Task<IEnumerable<AccountLedgerSummaryDto>> GetAllAccountBalancesAsync(int tenantId, string? accountCodePrefix = null);
+
+        // New method for Milk Card
+        Task<MilkCardDto?> GetMilkCardAsync(MilkCardQueryParameters query);
     }
 }

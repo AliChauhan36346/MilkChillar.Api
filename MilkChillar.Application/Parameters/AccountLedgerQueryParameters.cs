@@ -15,7 +15,10 @@ namespace MilkChillar.Application.Parameters
         public string? Search { get; set; }
         public string? SourceTable { get; set; }
         public int PageNumber { get; set; } = 1;
-        public int PageSize { get; set; } = 50;
+        public int PageSize { get; set; } = 20;
         public bool IncludeZeroTransactions { get; set; } = true;
+
+        // New property for grouping
+        public bool GroupPurchasesByPeriod { get; set; } = false;
     }
 }

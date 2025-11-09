@@ -22,5 +22,11 @@ namespace MilkChillar.Application.DTOs.AccountLedger
         public decimal RunningBalance { get; set; }
         public string? SourceTable { get; set; }
         public int? SourceId { get; set; }
+
+        // New properties for grouped transactions
+        public bool IsGrouped { get; set; }
+        public int? GroupedTransactionCount { get; set; }
+        public DateTime? PeriodStart { get; set; }
+        public DateTime? PeriodEnd { get; set; }
     }
 }

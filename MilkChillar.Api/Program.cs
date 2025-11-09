@@ -10,6 +10,7 @@
 //using MilkChillar.Infrastructure.Authorization;
 //using MilkChillar.Application.Interfaces;
 //using MilkChillar.Infrastructure.Services;
+//using MilkChillar.Domain.Entities;
 
 //var builder = WebApplication.CreateBuilder(args);
 
@@ -93,7 +94,9 @@
 //        "stock.create", "stock.read", "stock.update", "stock.delete",
 //        "openingBalance.read", "openingBalance.create", "openingBalance.update", "openingBalance.delete",
 //        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read"
-//        ,"profitloss.read","roznamcha.read"
+//        ,"profitloss.read","roznamcha.read", "bankPayment.read", "bankPayment.create", "bankPayment.update", "bankPayment.delete",
+//        "bankReceipt.read", "bankReceipt.create", "bankReceipt.update", "bankReceipt.delete", "cashReceipt,read",
+//        "cashReceipt.create", "cashReceipt.update", "cashReceipt.delete"
 //    };
 
 //    foreach (var permission in permissions)
@@ -125,6 +128,8 @@
 //builder.Services.AddScoped<IParchiService, ParchiService>();
 //builder.Services.AddScoped<IProfitLossService, ProfitLossService>();
 //builder.Services.AddScoped<IRoznamchaService, RoznamchaService>();
+//builder.Services.AddScoped<ICashReceiptService, CashReceiptService>();
+//builder.Services.AddScoped<IBankTransactionService, BankTransactionService>();
 
 //builder.Services.AddControllers();
 //builder.Services.AddEndpointsApiExplorer();
@@ -274,7 +279,10 @@ builder.Services.AddAuthorization(options =>
         "purchase.create", "purchase.read", "purchase.update", "purchase.delete",
         "stock.create", "stock.read", "stock.update", "stock.delete",
         "openingBalance.read", "openingBalance.create", "openingBalance.update", "openingBalance.delete",
-        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read","profitloss.read","roznamcha.read"
+        "cashPayment.create", "cashPayment.read", "cashPayment.update", "cashPayment.delete", "ledger.read", "parchi.read","profitloss.read","roznamcha.read",
+        "bankPayment.read", "bankPayment.create", "bankPayment.update", "bankPayment.delete",
+        "bankReceipt.read", "bankReceipt.create", "bankReceipt.update", "bankReceipt.delete", "cashReceipt,read",
+        "cashReceipt.create", "cashReceipt.update", "cashReceipt.delete"
     };
 
     foreach (var permission in permissions)
@@ -305,6 +313,8 @@ builder.Services.AddScoped<IAccountLedgerService, AccountLedgerService>();
 builder.Services.AddScoped<IParchiService, ParchiService>();
 builder.Services.AddScoped<IProfitLossService, ProfitLossService>();
 builder.Services.AddScoped<IRoznamchaService, RoznamchaService>();
+builder.Services.AddScoped<ICashReceiptService, CashReceiptService>();
+builder.Services.AddScoped<IBankTransactionService, BankTransactionService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
