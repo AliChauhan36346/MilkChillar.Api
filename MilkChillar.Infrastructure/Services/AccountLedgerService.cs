@@ -324,29 +324,27 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<PaginatedResult<AccountLedgerDto>> GetAccountLedgerAsync(AccountLedgerQueryParameters query)
         {
-            var ledgerQuery = from jel in _context.JournalEntryLines
-                              join je in _context.JournalEntries on jel.JournalEntryId equals je.JournalEntryId
-                              join account in _context.Accounts on jel.AccountId equals account.AccountId
-                              where account.TenantId == query.TenantId &&
-                                    jel.AccountId == query.AccountId
-                              select new
-                              {
-                                  jel.JournalLineId,
-                                  jel.JournalEntryId,
-                                  jel.AccountId,
-                                  account.AccountCode,
-                                  account.Name,
-                                  je.EntryDate,
-                                  je.ReferenceNo,
-                                  je.Description,
-                                  jel.Narration,
-                                  jel.Debit,
-                                  jel.Credit,
-                                  je.SourceTable,
-                                  je.SourceId
-                              };
+            // Build optimized query with only necessary includes
+            var ledgerQuery = _context.JournalEntryLines
+                .Where(jel => jel.Account.TenantId == query.TenantId && jel.AccountId == query.AccountId)
+                .Select(jel => new
+                {
+                    jel.JournalLineId,
+                    jel.JournalEntryId,
+                    jel.AccountId,
+                    AccountCode = jel.Account.AccountCode,
+                    AccountName = jel.Account.Name,
+                    jel.JournalEntry.EntryDate,
+                    jel.JournalEntry.ReferenceNo,
+                    jel.JournalEntry.Description,
+                    jel.Narration,
+                    jel.Debit,
+                    jel.Credit,
+                    jel.JournalEntry.SourceTable,
+                    jel.JournalEntry.SourceId
+                });
 
-            // Apply date filters
+            // Apply date filters (pushed to database)
             if (query.FromDate.HasValue)
             {
                 ledgerQuery = ledgerQuery.Where(x => x.EntryDate >= query.FromDate.Value);
@@ -357,68 +355,121 @@ namespace MilkChillar.Infrastructure.Services
                 ledgerQuery = ledgerQuery.Where(x => x.EntryDate <= query.ToDate.Value);
             }
 
-            // Apply search filter
+            // Apply search filter (pushed to database)
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
+                var searchLower = query.Search.ToLower();
                 ledgerQuery = ledgerQuery.Where(x =>
-                    (x.Description != null && x.Description.Contains(query.Search)) ||
-                    (x.Narration != null && x.Narration.Contains(query.Search)) ||
-                    (x.ReferenceNo != null && x.ReferenceNo.Contains(query.Search))
+                    (x.Description != null && x.Description.ToLower().Contains(searchLower)) ||
+                    (x.Narration != null && x.Narration.ToLower().Contains(searchLower)) ||
+                    (x.ReferenceNo != null && x.ReferenceNo.ToLower().Contains(searchLower))
                 );
             }
 
-            // Apply source table filter
+            // Apply source table filter (pushed to database)
             if (!string.IsNullOrWhiteSpace(query.SourceTable))
             {
                 ledgerQuery = ledgerQuery.Where(x => x.SourceTable == query.SourceTable);
             }
 
-            // Filter zero transactions if needed
+            // Filter zero transactions (pushed to database)
             if (!query.IncludeZeroTransactions)
             {
                 ledgerQuery = ledgerQuery.Where(x => x.Debit != 0 || x.Credit != 0);
             }
 
-            // Get all data for processing
+            // Execute query once and get data
             var allData = await ledgerQuery
                 .OrderBy(x => x.EntryDate)
                 .ThenBy(x => x.JournalEntryId)
+                .AsNoTracking() // Optimize for read-only
                 .ToListAsync();
 
-            // Group purchases/sales by 15-day periods if enabled
+            // Process data based on grouping preference
             List<AccountLedgerDto> processedData;
-            if (query.GroupPurchasesByPeriod && (query.SourceTable == "Purchases" || query.SourceTable == "Sales"))
-            {
-                processedData = GroupTransactionsByPeriod(allData, query.SourceTable);
-            }
-            else
-            {
-                // Calculate running balance
-                var runningBalance = 0m;
-                if (query.FromDate.HasValue)
-                {
-                    runningBalance = await GetAccountBalanceAsync(query.AccountId, query.TenantId, query.FromDate.Value.AddDays(-1));
-                }
 
-                processedData = allData.Select(x => new AccountLedgerDto
+            if (query.GroupPurchasesByPeriod)
+            {
+                // Separate purchases/sales from other transactions
+                var purchaseSales = allData.Where(x =>
+                    x.SourceTable != null &&
+                    (x.SourceTable.Equals("purchase", StringComparison.OrdinalIgnoreCase) ||
+                     x.SourceTable.Equals("sales", StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+
+                var otherTransactions = allData.Where(x =>
+                    x.SourceTable == null ||
+                    (!x.SourceTable.Equals("purchase", StringComparison.OrdinalIgnoreCase) &&
+                     !x.SourceTable.Equals("sales", StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+
+                // Group purchases/sales
+                var groupedPurchaseSales = GroupTransactionsByPeriod(purchaseSales);
+
+                // Convert other transactions to DTOs
+                var otherDtos = otherTransactions.Select(x => new AccountLedgerDto
                 {
                     JournalLineId = x.JournalLineId,
                     JournalEntryId = x.JournalEntryId,
                     AccountId = x.AccountId,
                     AccountCode = x.AccountCode,
-                    AccountName = x.Name,
+                    AccountName = x.AccountName,
                     EntryDate = x.EntryDate,
                     ReferenceNo = x.ReferenceNo,
                     Description = x.Description,
                     Narration = x.Narration,
                     Debit = x.Debit,
                     Credit = x.Credit,
-                    RunningBalance = runningBalance += (x.Debit - x.Credit),
+                    RunningBalance = 0,
                     SourceTable = x.SourceTable,
-                    SourceId = x.SourceId
+                    SourceId = x.SourceId,
+                    IsGrouped = false
+                }).ToList();
+
+                // Combine and sort by date
+                processedData = groupedPurchaseSales
+                    .Concat(otherDtos)
+                    .OrderBy(x => x.EntryDate)
+                    .ThenBy(x => x.JournalEntryId)
+                    .ToList();
+            }
+            else
+            {
+                // No grouping - convert all to DTOs
+                processedData = allData.Select(x => new AccountLedgerDto
+                {
+                    JournalLineId = x.JournalLineId,
+                    JournalEntryId = x.JournalEntryId,
+                    AccountId = x.AccountId,
+                    AccountCode = x.AccountCode,
+                    AccountName = x.AccountName,
+                    EntryDate = x.EntryDate,
+                    ReferenceNo = x.ReferenceNo,
+                    Description = x.Description,
+                    Narration = x.Narration,
+                    Debit = x.Debit,
+                    Credit = x.Credit,
+                    RunningBalance = 0,
+                    SourceTable = x.SourceTable,
+                    SourceId = x.SourceId,
+                    IsGrouped = false
                 }).ToList();
             }
 
+            // Calculate running balance for all entries
+            var runningBalance = 0m;
+            if (query.FromDate.HasValue)
+            {
+                runningBalance = await GetAccountBalanceAsync(query.AccountId, query.TenantId, query.FromDate.Value.AddDays(-1));
+            }
+
+            foreach (var item in processedData)
+            {
+                runningBalance += (item.Debit - item.Credit);
+                item.RunningBalance = runningBalance;
+            }
+
+            // Apply pagination
             var totalCount = processedData.Count;
             var skip = (query.PageNumber - 1) * query.PageSize;
             var paginatedData = processedData.Skip(skip).Take(query.PageSize).ToList();
@@ -432,27 +483,32 @@ namespace MilkChillar.Infrastructure.Services
             };
         }
 
-        private List<AccountLedgerDto> GroupTransactionsByPeriod<T>(List<T> transactions, string sourceTable) where T : class
+        private List<AccountLedgerDto> GroupTransactionsByPeriod<T>(List<T> transactions) where T : class
         {
+            if (!transactions.Any()) return new List<AccountLedgerDto>();
+
+            // Extract properties using reflection once
             var grouped = transactions
                 .Select(x => new
                 {
-                    Transaction = x,
                     EntryDate = (DateTime)x.GetType().GetProperty("EntryDate")!.GetValue(x)!,
                     JournalLineId = (int)x.GetType().GetProperty("JournalLineId")!.GetValue(x)!,
                     JournalEntryId = (int)x.GetType().GetProperty("JournalEntryId")!.GetValue(x)!,
                     AccountId = (int)x.GetType().GetProperty("AccountId")!.GetValue(x)!,
                     AccountCode = (string)x.GetType().GetProperty("AccountCode")!.GetValue(x)!,
-                    Name = (string)x.GetType().GetProperty("Name")!.GetValue(x)!,
+                    AccountName = (string)x.GetType().GetProperty("AccountName")!.GetValue(x)!,
                     Debit = (decimal)x.GetType().GetProperty("Debit")!.GetValue(x)!,
-                    Credit = (decimal)x.GetType().GetProperty("Credit")!.GetValue(x)!
+                    Credit = (decimal)x.GetType().GetProperty("Credit")!.GetValue(x)!,
+                    SourceTable = (string?)x.GetType().GetProperty("SourceTable")!.GetValue(x)
                 })
                 .GroupBy(x => new
                 {
                     Year = x.EntryDate.Year,
                     Month = x.EntryDate.Month,
-                    Period = x.EntryDate.Day <= 15 ? 1 : 2
+                    Period = x.EntryDate.Day <= 15 ? 1 : 2, // 1st half (1-15) or 2nd half (16-end)
+                    SourceTable = x.SourceTable
                 })
+                .Where(g => g.Count() > 0) // Only include periods with transactions
                 .Select(group =>
                 {
                     var firstDate = group.Min(x => x.EntryDate);
@@ -460,6 +516,7 @@ namespace MilkChillar.Infrastructure.Services
                     var totalDebit = group.Sum(x => x.Debit);
                     var totalCredit = group.Sum(x => x.Credit);
                     var firstItem = group.First();
+                    var sourceTable = group.Key.SourceTable ?? "Unknown";
 
                     var periodStart = new DateTime(group.Key.Year, group.Key.Month, group.Key.Period == 1 ? 1 : 16);
                     var periodEnd = group.Key.Period == 1
@@ -468,18 +525,18 @@ namespace MilkChillar.Infrastructure.Services
 
                     return new AccountLedgerDto
                     {
-                        JournalLineId = 0,
-                        JournalEntryId = 0,
+                        JournalLineId = 0, // Grouped entry
+                        JournalEntryId = 0, // Grouped entry
                         AccountId = firstItem.AccountId,
                         AccountCode = firstItem.AccountCode,
-                        AccountName = firstItem.Name,
-                        EntryDate = firstDate,
+                        AccountName = firstItem.AccountName,
+                        EntryDate = firstDate, // Use first transaction date in the period
                         ReferenceNo = $"{periodStart:dd MMM} - {periodEnd:dd MMM yyyy}",
-                        Description = $"{sourceTable} Summary ({group.Count()} transactions)",
+                        Description = $"{sourceTable} Summary ({group.Count()} entries)",
                         Narration = $"Period: {periodStart:dd/MM/yyyy} to {periodEnd:dd/MM/yyyy}",
                         Debit = totalDebit,
                         Credit = totalCredit,
-                        RunningBalance = 0,
+                        RunningBalance = 0, // Will be calculated later
                         SourceTable = $"{sourceTable}_Grouped",
                         SourceId = null,
                         IsGrouped = true,
@@ -490,14 +547,6 @@ namespace MilkChillar.Infrastructure.Services
                 })
                 .OrderBy(x => x.EntryDate)
                 .ToList();
-
-            // Calculate running balance
-            var runningBalance = 0m;
-            foreach (var item in grouped)
-            {
-                runningBalance += (item.Debit - item.Credit);
-                item.RunningBalance = runningBalance;
-            }
 
             return grouped;
         }
