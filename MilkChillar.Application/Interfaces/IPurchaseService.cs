@@ -13,9 +13,30 @@ namespace MilkChillar.Application.Interfaces
 
         //Task<PurchaseMetadataDto> GetPurchaseMetadataAsync(DateOnly date, string timeOfDay, int tenantId, int userId);
 
-        Task<PurchaseMetadataDto> GetPurchaseMetadataAsync(DateOnly date, string timeOfDay, int tenantId, int dodhiId);
+        //Task<PurchaseMetadataDto> GetPurchaseMetadataAsync(DateOnly date, string timeOfDay, int tenantId, int dodhiId);
 
         // get my dodhi id
         Task<int?> GetMyDodhiIdAsync(int userId);
+
+        Task<PaginatedResult<RemainingSupplierDto>> GetRemainingSuppliers(
+        DateOnly date,
+        string timeOfDay,
+        int dodhiId,
+        string searchCode,
+        int page = 1,
+        int pageSize = 20);
+
+        Task<PaginatedResult<PurchaseDto>> GetDailyPurchases(
+            DateOnly date,
+            string timeOfDay,
+            int dodhiId,
+            string searchCode,
+            int page = 1,
+            int pageSize = 20);
+
+        Task<PurchaseSummaryDto> GetPurchaseSummary(
+            DateOnly date,
+            int dodhiId,
+            string? timeOfDay = null);
     }
 }
