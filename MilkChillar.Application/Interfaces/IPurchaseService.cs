@@ -38,5 +38,9 @@ namespace MilkChillar.Application.Interfaces
             DateOnly date,
             int dodhiId,
             string? timeOfDay = null);
+
+
+        Task<bool> DeleteAsync(int purchaseId, int tenantId);
+
     }
 }

@@ -85,8 +85,11 @@ namespace MilkChillar.Infrastructure.Services
                 AccountId = s.AccountId,
                 AccountCode=s.Account.AccountCode,
                 AccountName = s.Account.Name,
+                RevenueAccountId = s.RevenueAccountId,
                 RevenueAccountName = s.RevenueAccount.Name,
+                ChillarId = s.ChillarId,
                 ChillarName = s.Chillar.Name,
+                AddedById = s.AddedBy,
                 AddedByName = s.User.Username,
                 GrossLiters = s.GrossLiters,
                 LR = s.LR,
@@ -289,6 +292,18 @@ namespace MilkChillar.Infrastructure.Services
 
         }
 
+        public async Task<bool> DeleteAsync(int saleId, int tenantId)
+        {
+            var sale = await _context.Sales
+                .FirstOrDefaultAsync(s => s.SaleId == saleId && s.TenantId == tenantId);
+
+            if (sale == null)
+                return false;
+
+            _context.Sales.Remove(sale);
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
     }
 }

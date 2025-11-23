@@ -622,10 +622,7 @@ namespace MilkChillar.Infrastructure.Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<PurchaseService> _logger;
 
-        public PurchaseService(
-            ApplicationDbContext context,
-            IHttpContextAccessor httpContextAccessor,
-            ILogger<PurchaseService> logger)
+        public PurchaseService(ApplicationDbContext context,IHttpContextAccessor httpContextAccessor,ILogger<PurchaseService> logger)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
@@ -707,7 +704,9 @@ namespace MilkChillar.Infrastructure.Services
                 AccountId = p.AccountId,
                 AccountCode = p.Account.AccountCode,
                 AccountName = p.Account.Name,
+                ExpenseAccountId= p.ExpenseAccountId,
                 ExpenseAccountName = p.ExpenseAccount.Name,
+                DodhiId= p.DodhiId,
                 DodhiName = p.Dodhi.FullName,
                 GrossLiters = p.GrossLiters,
                 Rate = p.Rate,
@@ -813,9 +812,8 @@ namespace MilkChillar.Infrastructure.Services
             return employee.EmployeeId;
         }
 
-        // ============================================
+        
         // 1. GET REMAINING SUPPLIERS (Paginated + Search)
-        // ============================================
         public async Task<PaginatedResult<RemainingSupplierDto>> GetRemainingSuppliers(
             DateOnly date,
             string timeOfDay,
@@ -942,9 +940,7 @@ namespace MilkChillar.Infrastructure.Services
             }
         }
 
-        // ============================================
-        // 2. GET DAILY PURCHASES (Paginated + Search)
-        // ============================================
+        
         public async Task<PaginatedResult<PurchaseDto>> GetDailyPurchases(
             DateOnly date,
             string timeOfDay,
@@ -1038,9 +1034,8 @@ namespace MilkChillar.Infrastructure.Services
             }
         }
 
-        // ============================================
         // 3. GET PURCHASE SUMMARY (Totals Only)
-        // ============================================
+        
         public async Task<PurchaseSummaryDto> GetPurchaseSummary(
             DateOnly date,
             int dodhiId,
@@ -1100,5 +1095,22 @@ namespace MilkChillar.Infrastructure.Services
                 };
             }
         }
+
+
+        public async Task<bool> DeleteAsync(int purchaseId, int tenantId)
+        {
+            var purchase = await _context.Purchases
+                .FirstOrDefaultAsync(p => p.PurchaseId == purchaseId && p.TenantId == tenantId);
+
+            if (purchase == null)
+                return false;
+
+            _context.Purchases.Remove(purchase);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+
+
     }
 }

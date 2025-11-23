@@ -199,5 +199,15 @@ namespace MilkChillar.Api.Controllers
             var result = await _purchaseService.GetPurchaseSummary(parsedDate, dodhiId, timeOfDay);
             return Ok(result);
         }
+
+        [HttpDelete("{id}")]
+        [Authorize(Policy = "purchase.delete")]
+        public async Task<ActionResult> DeletePurchase(int id)
+        {
+            var tenantId = GetTenantId();
+            var deleted = await _purchaseService.DeleteAsync(id, tenantId);
+            return deleted ? NoContent() : NotFound();
+        }
+
     }
 }

@@ -592,10 +592,12 @@ namespace MilkChillar.Infrastructure.Services
                         var morningQty = morningEntry?.GrossLiters ?? 0;
                         var morningRate = morningEntry?.Rate ?? 0;
                         var morningAmount = morningEntry?.TotalAmount ?? 0;
+                        var morningId = morningEntry?.PurchaseId ?? 0;
 
                         var eveningQty = eveningEntry?.GrossLiters ?? 0;
                         var eveningRate = eveningEntry?.Rate ?? 0;
                         var eveningAmount = eveningEntry?.TotalAmount ?? 0;
+                        var eveningId = eveningEntry?.PurchaseId ?? 0;
 
                         return new MilkCardLineDto
                         {
@@ -603,9 +605,11 @@ namespace MilkChillar.Infrastructure.Services
                             MorningQuantity = morningQty,
                             MorningRate = morningRate,
                             MorningAmount = morningAmount,
+                            MorningTransactionId = morningId,
                             EveningQuantity = eveningQty,
                             EveningRate = eveningRate,
                             EveningAmount = eveningAmount,
+                            EveningTransactionId = eveningId,
                             TotalQuantity = morningQty + eveningQty,
                             TotalAmount = morningAmount + eveningAmount,
                             Remarks = null
@@ -631,9 +635,11 @@ namespace MilkChillar.Infrastructure.Services
                     MorningQuantity = 0,
                     MorningRate = 0,
                     MorningAmount = 0,
+                    MorningTransactionId = 0,
                     EveningQuantity = s.NetLiters,
                     EveningRate = s.Rate,
                     EveningAmount = s.TotalAmount,
+                    EveningTransactionId = s.SaleId,
                     TotalQuantity = s.NetLiters,
                     TotalAmount = s.TotalAmount,
                     Remarks = null
@@ -675,7 +681,6 @@ namespace MilkChillar.Infrastructure.Services
                 TransactionCount = milkCardLines.Count
             };
         }
-
         public async Task<AccountLedgerSummaryDto?> GetAccountLedgerSummaryAsync(int accountId, int tenantId, DateTime? fromDate = null, DateTime? toDate = null)
         {
             var account = await _context.Accounts

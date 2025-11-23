@@ -14,8 +14,11 @@ namespace MilkChillar.Application.DTOs.Sales
         public int AccountId { get; set; }
         public string AccountCode { get; set; } = default!;
         public string AccountName { get; set; } = default!;
+        public int RevenueAccountId { get; set; }
         public string RevenueAccountName { get; set; } = default!;
+        public int ChillarId { get; set; }
         public string ChillarName { get; set; } = default!;
+        public int AddedById { get; set; }
         public string AddedByName { get; set; } = default!;
 
         public decimal GrossLiters { get; set; }

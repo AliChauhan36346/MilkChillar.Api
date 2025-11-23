@@ -12,6 +12,9 @@ namespace MilkChillar.Application.Interfaces
         Task<SaleDto> CreateAsync(CreateSaleDto dto, int tenantId, int addedByUserId);
         Task<SaleDto?> UpdateAsync(int saleId, UpdateSaleDto dto, int tenantId);
         Task<SalesMetadataDto> GetSalesMetadataAsync(DateOnly date, int tenantId, int userId);
-        
+
+        Task<bool> DeleteAsync(int saleId, int tenantId);
+
+
     }
 }

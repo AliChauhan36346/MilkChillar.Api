@@ -77,5 +77,15 @@ namespace MilkChillar.Api.Controllers
             var updated = await _salesService.UpdateAsync(id, dto, tenantId);
             return updated is null ? NotFound() : Ok(updated);
         }
+
+        [HttpDelete("{id}")]
+        [Authorize(Policy = "sales.delete")]
+        public async Task<ActionResult> DeleteSale(int id)
+        {
+            var tenantId = GetTenantId();
+            var deleted = await _salesService.DeleteAsync(id, tenantId);
+            return deleted ? NoContent() : NotFound();
+        }
+
     }
 }

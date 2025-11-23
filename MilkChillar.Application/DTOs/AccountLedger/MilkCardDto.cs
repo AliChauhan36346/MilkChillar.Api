@@ -43,9 +43,11 @@ namespace MilkChillar.Application.DTOs.AccountLedger
         public decimal MorningQuantity { get; set; }
         public decimal MorningRate { get; set; }
         public decimal MorningAmount { get; set; }
+        public int MorningTransactionId { get; set; }  // NEW
         public decimal EveningQuantity { get; set; }
         public decimal EveningRate { get; set; }
         public decimal EveningAmount { get; set; }
+        public int EveningTransactionId { get; set; }  // NEW
         public decimal TotalQuantity { get; set; }
         public decimal TotalAmount { get; set; }
         public string? Remarks { get; set; }
