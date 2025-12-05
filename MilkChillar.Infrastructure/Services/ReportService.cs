@@ -1014,5 +1014,116 @@ namespace MilkChillar.Infrastructure.Services
             };
         }
 
+        public async Task<List<DailyTotalsDto>> GetDailyTotalsAsync(ProfitLossFilterRequest request, int tenantId)
+        {
+            var start = DateOnly.FromDateTime(request.StartDate.Date);
+            var end = DateOnly.FromDateTime(request.EndDate.Date);
+
+            // Condition for chillar filtering
+            bool filterByChillar = request.ChillarId > 0;
+
+            // Purchases
+            var purchaseQuery = _dbContext.Purchases
+                .Where(p => p.TenantId == tenantId &&
+                            p.Date >= start &&
+                            p.Date <= end);
+
+            if (filterByChillar)
+                purchaseQuery = purchaseQuery.Where(p => p.Dodhi.ChillarId == request.ChillarId);
+
+            var purchaseGroups = await purchaseQuery
+                .GroupBy(p => p.Date)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    TotalPurchaseLiters = g.Sum(p => p.GrossLiters),
+                    TotalPurchaseAmount = g.Sum(p => p.GrossLiters * p.Rate)
+                })
+                .ToListAsync();
+
+
+            // Chillar Receive
+            var receiveQuery = _dbContext.ChillarReceives
+                .Where(r => r.TenantId == tenantId &&
+                            r.Date >= start &&
+                            r.Date <= end);
+
+            if (filterByChillar)
+                receiveQuery = receiveQuery.Where(r => r.ChillarId == request.ChillarId);
+
+            var receiveGroups = await receiveQuery
+                .GroupBy(r => r.Date)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    TotalReceiveLiters = g.Sum(r => r.GrossLiters),
+                    TotalNetLiters = g.Sum(r => r.NetLiters),
+                    ChillarLoss = g.Sum(r => (r.GrossLiters - r.NetLiters))
+                })
+                .ToListAsync();
+
+
+            // Sales
+            var salesQuery = _dbContext.Sales
+                .Where(s => s.TenantId == tenantId &&
+                            s.Date >= start &&
+                            s.Date <= end);
+
+            if (filterByChillar)
+                salesQuery = salesQuery.Where(s => s.ChillarId == request.ChillarId);
+
+            var salesGroups = await salesQuery
+                .GroupBy(s => s.Date)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    TotalSalesLiters = g.Sum(s => s.NetLiters),
+                    SalesAmount = g.Sum(s => s.NetLiters * s.Rate)
+                })
+                .ToListAsync();
+
+
+            // Combine Final Result
+            var result = new List<DailyTotalsDto>();
+
+            for (var d = start; d <= end; d = d.AddDays(1))
+            {
+                var p = purchaseGroups.FirstOrDefault(x => x.Date == d);
+                var r = receiveGroups.FirstOrDefault(x => x.Date == d);
+                var s = salesGroups.FirstOrDefault(x => x.Date == d);
+
+                var purchaseLiters = p?.TotalPurchaseLiters ?? 0m;
+                var purchaseAmount = p?.TotalPurchaseAmount ?? 0m;
+
+                var receiveLiters = r?.TotalReceiveLiters ?? 0m;
+                var chillarLoss = r?.ChillarLoss ?? 0m;
+
+                var salesLiters = s?.TotalSalesLiters ?? 0m;
+                var salesAmount = s?.SalesAmount ?? 0m;
+
+                var tsSalesLiters = salesLiters;
+                var tsDifference = salesLiters - receiveLiters;
+
+                var grossProfit = salesAmount - purchaseAmount;
+
+                result.Add(new DailyTotalsDto
+                {
+                    Date = d,
+                    TotalPurchaseLiters = purchaseLiters,
+                    TotalPurchaseAmount = purchaseAmount,
+                    TotalChillarReceiveLiters = receiveLiters,
+                    DodhiLoss = receiveLiters - purchaseLiters,
+                    TotalSalesLiters = salesLiters,
+                    ChillarLoss = chillarLoss,
+                    TsSalesLiters = tsSalesLiters,
+                    TsDifference = tsDifference,
+                    SalesAmount = salesAmount,
+                    GrossProfit = grossProfit
+                });
+            }
+
+            return result.OrderBy(x => x.Date).ToList();
+        }
+
     }
 }

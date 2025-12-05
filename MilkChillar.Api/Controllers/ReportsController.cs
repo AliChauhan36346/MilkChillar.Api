@@ -3,6 +3,7 @@ using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Infrastructure.Services;
 using System.Security.Claims;
+using MilkChillar.Application.DTOs.Reports;
 
 namespace MilkChillar.Api.Controllers
 {
@@ -198,6 +199,27 @@ namespace MilkChillar.Api.Controllers
             var result = await _dashboardStatsService.GetSalesReportSummaryAsync(query, tenantId);
             return Ok(result);
         }
+
+        // NEW - Daily totals endpoint
+        [HttpGet("DailyTotals")]
+        public async Task<IActionResult> GetDailyTotals([FromQuery] DateTime startDate,[FromQuery] DateTime endDate,[FromQuery] int chillarId = 0)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            var request = new ProfitLossFilterRequest
+            {
+                StartDate = startDate,
+                EndDate = endDate,
+                ChillarId = chillarId,   // 🔥 Added
+                Format = "json"
+            };
+
+            var result = await _dashboardStatsService.GetDailyTotalsAsync(request, tenantId);
+            return Ok(result);
+        }
+
 
     }
 

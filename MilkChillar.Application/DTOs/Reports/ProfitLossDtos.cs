@@ -12,6 +12,9 @@ namespace MilkChillar.Application.DTOs.Reports
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public string Format { get; set; } = "json"; // json, pdf, excel
+
+        // Optional filter: chillar (facility) id
+        public int? ChillarId { get; set; }
     }
 
     public class ComparativeProfitLossRequest

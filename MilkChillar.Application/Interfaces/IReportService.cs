@@ -39,5 +39,8 @@ namespace MilkChillar.Application.Interfaces
         // Sales Reports
         Task<BuyerWiseSalesReportDto> GetBuyerWiseSalesReportAsync(SalesReportQuery query, int tenantId);
         Task<SalesReportSummaryDto> GetSalesReportSummaryAsync(SalesReportQuery query, int tenantId);
+
+        // NEW - Daily totals over a date range
+        Task<List<DailyTotalsDto>> GetDailyTotalsAsync(ProfitLossFilterRequest request, int tenantId);
     }
 }
