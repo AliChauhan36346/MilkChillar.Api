@@ -1077,6 +1077,7 @@ namespace MilkChillar.Infrastructure.Services
                 .Select(g => new
                 {
                     Date = g.Key,
+                    TotalGrossSalesLiters=g.Sum(s => s.GrossLiters),
                     TotalSalesLiters = g.Sum(s => s.NetLiters),
                     SalesAmount = g.Sum(s => s.NetLiters * s.Rate)
                 })
@@ -1098,11 +1099,12 @@ namespace MilkChillar.Infrastructure.Services
                 var receiveLiters = r?.TotalReceiveLiters ?? 0m;
                 var chillarLoss = r?.ChillarLoss ?? 0m;
 
+                var grossSalesLiters = s?.TotalGrossSalesLiters ?? 0m;
                 var salesLiters = s?.TotalSalesLiters ?? 0m;
                 var salesAmount = s?.SalesAmount ?? 0m;
 
-                var tsSalesLiters = salesLiters;
-                var tsDifference = salesLiters - receiveLiters;
+               
+                var tsDifference = salesLiters - grossSalesLiters;
 
                 var grossProfit = salesAmount - purchaseAmount;
 
@@ -1113,9 +1115,9 @@ namespace MilkChillar.Infrastructure.Services
                     TotalPurchaseAmount = purchaseAmount,
                     TotalChillarReceiveLiters = receiveLiters,
                     DodhiLoss = receiveLiters - purchaseLiters,
-                    TotalSalesLiters = salesLiters,
+                    TotalSalesLiters = grossSalesLiters,
                     ChillarLoss = chillarLoss,
-                    TsSalesLiters = tsSalesLiters,
+                    TsSalesLiters = salesLiters,
                     TsDifference = tsDifference,
                     SalesAmount = salesAmount,
                     GrossProfit = grossProfit
