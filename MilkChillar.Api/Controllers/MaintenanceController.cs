@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
-using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.DTOs.Maintenance;
+using MilkChillar.Application.Interfaces;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace MilkChillar.API.Controllers
 {
@@ -19,8 +20,10 @@ namespace MilkChillar.API.Controllers
 
         private int GetTenantId()
         {
-            // Implement tenant ID retrieval logic as per your authentication setup
-            return 1;
+            var tenantIdStr = User.FindFirstValue("tenant_id");
+            if (string.IsNullOrWhiteSpace(tenantIdStr))
+                throw new UnauthorizedAccessException("Tenant ID is missing from the token.");
+            return int.Parse(tenantIdStr);
         }
 
         [HttpPost("mass-update-supplier-rate-by-dodhi")]
@@ -61,10 +64,20 @@ namespace MilkChillar.API.Controllers
 
         [HttpGet("supplier-rate-summary")]
         [Authorize(Policy = "supplier.read")]
-        public async Task<ActionResult<SupplierRateSummaryDto>> GetSupplierRateSummaryForPeriod(int accountId, string startDate, string endDate)
+        public async Task<ActionResult<RateSummaryDto>> GetSupplierRateSummaryForPeriod(int accountId, string startDate, string endDate)
         {
             var tenantId = GetTenantId();
             var summary = await _maintenanceService.GetSupplierRateSummaryForPeriod(
+                accountId, DateOnly.Parse(startDate), DateOnly.Parse(endDate), tenantId);
+            return Ok(summary);
+        }
+
+        [HttpGet("buyer-rate-summary")]
+        [Authorize(Policy = "buyer.read")]
+        public async Task<ActionResult<RateSummaryDto>> GetBuyerRateSummaryForPeriod(int accountId, string startDate, string endDate)
+        {
+            var tenantId = GetTenantId();
+            var summary = await _maintenanceService.GetBuyerRateSummaryForPeriod(
                 accountId, DateOnly.Parse(startDate), DateOnly.Parse(endDate), tenantId);
             return Ok(summary);
         }

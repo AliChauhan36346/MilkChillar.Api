@@ -31,19 +31,59 @@ namespace MilkChillar.Infrastructure.Services
             return true;
         }
 
-        public async Task<SupplierRateSummaryDto> GetSupplierRateSummaryForPeriod(int accountId, DateOnly startDate, DateOnly endDate, int tenantId)
+        public async Task<RateSummaryDto> GetSupplierRateSummaryForPeriod(int accountId, DateOnly startDate, DateOnly endDate, int tenantId)
         {
             var purchases = await _context.Purchases
                 .Where(p => p.AccountId == accountId && p.TenantId == tenantId && p.Date >= startDate && p.Date <= endDate)
                 .ToListAsync();
 
-            var previousRate = purchases.FirstOrDefault()?.Rate ?? 0;
+            //var previousRate = purchases.FirstOrDefault()?.Rate ?? 0;
             var totalLiters = purchases.Sum(p => p.GrossLiters);
             var totalAmount = purchases.Sum(p => p.TotalAmount);
 
-            return new SupplierRateSummaryDto
+            double previousRate;
+
+            if (totalLiters > 0)
             {
-                PreviousRate = previousRate,
+                previousRate = (double)(totalAmount / totalLiters);   // Safe division
+            }
+            else
+            {
+                previousRate = (double)(purchases.FirstOrDefault()?.Rate ?? 0);
+            }
+
+            return new RateSummaryDto
+            {
+                PreviousRate = (decimal)previousRate,
+                TotalLiters = totalLiters,
+                TotalAmount = totalAmount
+            };
+        }
+
+        public async Task<RateSummaryDto> GetBuyerRateSummaryForPeriod(int accountId, DateOnly startDate, DateOnly endDate, int tenantId)
+        {
+            var sales = await _context.Sales
+                .Where(s => s.AccountId == accountId && s.TenantId == tenantId && s.Date >= startDate && s.Date <= endDate)
+                .ToListAsync();
+
+            //var previousRate = sales.FirstOrDefault()?.Rate ?? 0;
+            var totalLiters = sales.Sum(s => s.NetLiters);
+            var totalAmount = sales.Sum(s => s.TotalAmount);
+
+            double previousRate;
+
+            if (totalLiters > 0)
+            {
+                previousRate = (double)(totalAmount / totalLiters);   // Safe division
+            }
+            else
+            {
+                previousRate = (double)(sales.FirstOrDefault()?.Rate ?? 0);
+            }
+
+            return new RateSummaryDto
+            {
+                PreviousRate = (decimal)previousRate,
                 TotalLiters = totalLiters,
                 TotalAmount = totalAmount
             };
