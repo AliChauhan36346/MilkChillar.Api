@@ -220,6 +220,103 @@ namespace MilkChillar.Api.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Get overall summary for a chillar (total purchases, receives, losses across all dodhis)
+        /// </summary>
+        [HttpGet("OverallDodhiSummary")]
+        public async Task<IActionResult> GetOverallDodhiSummary(
+            [FromQuery] int chillarId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            if (chillarId <= 0)
+                return BadRequest(new { message = "Chillar ID must be greater than 0" });
+
+            if (startDate > endDate)
+                return BadRequest(new { message = "Start date must be before end date" });
+
+            try
+            {
+                var result = await _dashboardStatsService.GetOverallDodhiSummaryAsync(
+                    chillarId, startDate, endDate, tenantId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get single dodhi-wise summary (individual rows for each dodhi with their purchase/receive/loss)
+        /// </summary>
+        [HttpGet("SingleDodhiSummary")]
+        public async Task<IActionResult> GetSingleDodhiSummary(
+            [FromQuery] int chillarId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            if (chillarId <= 0)
+                return BadRequest(new { message = "Chillar ID must be greater than 0" });
+
+            if (startDate > endDate)
+                return BadRequest(new { message = "Start date must be before end date" });
+
+            try
+            {
+                var result = await _dashboardStatsService.GetSingleDodhiSummaryAsync(
+                    chillarId, startDate, endDate, tenantId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get detailed transaction-wise data for a specific dodhi (date-wise purchase and receive)
+        /// </summary>
+        [HttpGet("DodhiPurchaseReceiveDetail")]
+        public async Task<IActionResult> GetDodhiPurchaseReceiveDetail(
+            [FromQuery] int dodhiId,
+            [FromQuery] int chillarId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            int tenantId = GetTenantId();
+            if (tenantId == 0)
+                return Unauthorized("Tenant ID is missing in token.");
+
+            if (dodhiId <= 0)
+                return BadRequest(new { message = "Dodhi ID must be greater than 0" });
+
+            if (chillarId <= 0)
+                return BadRequest(new { message = "Chillar ID must be greater than 0" });
+
+            if (startDate > endDate)
+                return BadRequest(new { message = "Start date must be before end date" });
+
+            try
+            {
+                var result = await _dashboardStatsService.GetDodhiPurchaseReceiveDetailAsync(
+                    dodhiId, chillarId, startDate, endDate, tenantId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
 
     }
 

@@ -219,6 +219,21 @@ namespace MilkChillar.Infrastructure.Services
                 .ToListAsync();
         }
 
+        public async Task<MainAccountDto?> GetMainAccountByIdAsync(int mainAccountId)
+        {
+            int tenantId = GetTenantIdFromToken();
+            return await _context.MainAccounts
+                .Where(m => m.MainAccountId == mainAccountId && m.TenantId == tenantId)
+                .Select(m => new MainAccountDto
+                {
+                    MainAccountId = m.MainAccountId,
+                    Name = m.Name,
+                    MainAccountCode = m.MainAccountCode,
+                    FinancialStatementComponent = m.FinancialStatementComponent
+                })
+                .FirstOrDefaultAsync();
+        }
+
 
         public async Task<List<SubAccountDto>> GetSubAccountsAsync(int _, int mainAccountId)
         {
@@ -235,6 +250,22 @@ namespace MilkChillar.Infrastructure.Services
                 })
                 .ToListAsync();
         }
+
+        public async Task<SubAccountDto?> GetSubAccountByIdAsync(int subAccountId)
+        {
+            int tenantId = GetTenantIdFromToken();
+            return await _context.SubAccounts
+                .Where(s => s.SubAccountId == subAccountId && s.TenantId == tenantId)
+                .Select(s => new SubAccountDto
+                {
+                    SubAccountId = s.SubAccountId,
+                    Name = s.Name,
+                    SubAccountCode = s.SubAccountCode,
+                    MainAccountId = s.MainAccountId
+                })
+                .FirstOrDefaultAsync();
+        }
+
 
         public async Task<List<SubAccountDto>> GetSubAccountsByMainAccountCodeAsync(string mainAccountCode)
         {
@@ -269,6 +300,23 @@ namespace MilkChillar.Infrastructure.Services
                 })
                 .ToListAsync();
         }
+
+        public async Task<AccountDto?> GetAccountByIdAsync(int accountId)
+        {
+            int tenantId = GetTenantIdFromToken();
+            return await _context.Accounts
+                .Where(a => a.AccountId == accountId && a.TenantId == tenantId)
+                .Select(a => new AccountDto
+                {
+                    AccountId = a.AccountId,
+                    Name = a.Name,
+                    AccountCode = a.AccountCode,
+                    FullCode = a.FullCode,
+                    SubAccountId = a.SubAccountId
+                })
+                .FirstOrDefaultAsync();
+        }
+
 
         public async Task<List<ChartOfAccountDto>> GetChartOfAccountsAsync(int _)
         {
@@ -365,6 +413,142 @@ namespace MilkChillar.Infrastructure.Services
                     Balance = x.Balance
                 })
                 .ToListAsync();
+        }
+
+        // ============ UPDATE METHODS ============
+
+        public async Task UpdateMainAccountAsync(int mainAccountId, CreateMainAccountRequest request)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var mainAccount = await _context.MainAccounts
+                .FirstOrDefaultAsync(m => m.MainAccountId == mainAccountId && m.TenantId == tenantId);
+
+            if (mainAccount == null)
+                throw new Exception("Main account not found.");
+
+            mainAccount.Name = request.Name;
+            mainAccount.FinancialStatementComponent = request.FinancialStatementComponent;
+
+            _context.MainAccounts.Update(mainAccount);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateSubAccountAsync(int subAccountId, CreateSubAccountRequest request)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var subAccount = await _context.SubAccounts
+                .FirstOrDefaultAsync(sa => sa.SubAccountId == subAccountId && sa.TenantId == tenantId);
+
+            if (subAccount == null)
+                throw new Exception("Sub account not found.");
+
+            var mainAccount = await _context.MainAccounts
+                .FirstOrDefaultAsync(m => m.MainAccountId == request.MainAccountId && m.TenantId == tenantId);
+
+            if (mainAccount == null)
+                throw new Exception("Main account not found.");
+
+            subAccount.Name = request.Name;
+            subAccount.MainAccountId = request.MainAccountId;
+
+            _context.SubAccounts.Update(subAccount);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAccountAsync(int accountId, CreateAccountRequest request)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var account = await _context.Accounts
+                .Include(a => a.SubAccount)
+                    .ThenInclude(sa => sa.MainAccount)
+                .FirstOrDefaultAsync(a => a.AccountId == accountId && a.TenantId == tenantId);
+
+            if (account == null)
+                throw new Exception("Account not found.");
+
+            var subAccount = await _context.SubAccounts
+                .Include(sa => sa.MainAccount)
+                .FirstOrDefaultAsync(sa => sa.SubAccountId == request.SubAccountId && sa.TenantId == tenantId);
+
+            if (subAccount == null)
+                throw new Exception("Sub account not found.");
+
+            // If SubAccountId changed, update it and recalculate FullCode
+            if (account.SubAccountId != request.SubAccountId)
+            {
+                account.SubAccountId = request.SubAccountId;
+                var fullCode = $"{subAccount.MainAccount.MainAccountCode}-{subAccount.SubAccountCode}-{account.AccountCode}";
+                account.FullCode = fullCode;
+            }
+
+            account.Name = request.Name;
+
+            _context.Accounts.Update(account);
+            await _context.SaveChangesAsync();
+        }
+
+        // ============ DELETE METHODS ============
+
+        public async Task DeleteMainAccountAsync(int mainAccountId)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var mainAccount = await _context.MainAccounts
+                .Include(m => m.SubAccounts)
+                .FirstOrDefaultAsync(m => m.MainAccountId == mainAccountId && m.TenantId == tenantId);
+
+            if (mainAccount == null)
+                throw new Exception("Main account not found.");
+
+            // Check if there are any sub-accounts
+            if (mainAccount.SubAccounts.Any())
+                throw new Exception("Cannot delete main account with existing sub-accounts. Delete sub-accounts first.");
+
+            _context.MainAccounts.Remove(mainAccount);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSubAccountAsync(int subAccountId)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var subAccount = await _context.SubAccounts
+                .Include(sa => sa.Accounts)
+                .FirstOrDefaultAsync(sa => sa.SubAccountId == subAccountId && sa.TenantId == tenantId);
+
+            if (subAccount == null)
+                throw new Exception("Sub account not found.");
+
+            // Check if there are any accounts
+            if (subAccount.Accounts.Any())
+                throw new Exception("Cannot delete sub-account with existing accounts. Delete accounts first.");
+
+            _context.SubAccounts.Remove(subAccount);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAccountAsync(int accountId)
+        {
+            int tenantId = GetTenantIdFromToken();
+
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.AccountId == accountId && a.TenantId == tenantId);
+
+            if (account == null)
+                throw new Exception("Account not found.");
+
+            // Check if there are any journal entries linked to this account
+            var hasJournalEntries = await _context.JournalEntryLines
+                .AnyAsync(jel => jel.AccountId == accountId);
+
+            if (hasJournalEntries)
+                throw new Exception("Cannot delete account with existing transactions. Please contact system administrator.");
+
+            _context.Accounts.Remove(account);
+            await _context.SaveChangesAsync();
         }
 
 

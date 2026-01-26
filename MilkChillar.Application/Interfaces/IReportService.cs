@@ -42,5 +42,40 @@ namespace MilkChillar.Application.Interfaces
 
         // NEW - Daily totals over a date range
         Task<List<DailyTotalsDto>> GetDailyTotalsAsync(ProfitLossFilterRequest request, int tenantId);
+
+        // Dodhi Reports
+        Task<DodhiWisePurchaseReceiveReportDto> GetDodhiWisePurchaseReceiveReportAsync(
+            int chillarId,
+            DateTime startDate,
+            DateTime endDate,
+            int tenantId);
+
+        /// <summary>
+        /// Get overall summary for all dodhis in a chillar (total purchase/receive/loss)
+        /// </summary>
+        Task<DodhiReportOverallSummaryDto> GetOverallDodhiSummaryAsync(
+            int chillarId,
+            DateTime startDate,
+            DateTime endDate,
+            int tenantId);
+
+        /// <summary>
+        /// Get single dodhi-wise summary (individual rows for each dodhi)
+        /// </summary>
+        Task<List<DodhiSummaryDto>> GetSingleDodhiSummaryAsync(
+            int chillarId,
+            DateTime startDate,
+            DateTime endDate,
+            int tenantId);
+
+        /// <summary>
+        /// Get detailed transaction-wise data for a specific dodhi
+        /// </summary>
+        Task<DodhiPurchaseReceiveDetailDto> GetDodhiPurchaseReceiveDetailAsync(
+            int dodhiId,
+            int chillarId,
+            DateTime startDate,
+            DateTime endDate,
+            int tenantId);
     }
 }

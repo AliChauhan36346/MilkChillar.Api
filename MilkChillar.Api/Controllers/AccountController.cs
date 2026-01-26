@@ -57,11 +57,31 @@ namespace MilkChillar.Api.Controllers
             return Ok(result);
         }
 
+        [HttpGet("main/{mainAccountId}")]
+        [Authorize(Policy = "mainaccount.read")]
+        public async Task<IActionResult> GetMainAccountById(int mainAccountId)
+        {
+            var result = await _accountService.GetMainAccountByIdAsync(mainAccountId);
+            if (result == null)
+                return NotFound(new { message = "Main account not found" });
+            return Ok(result);
+        }
+
         [HttpGet("sub")]
         [Authorize(Policy = "subaccount.read")]
         public async Task<IActionResult> GetSubAccounts([FromQuery] int tenantId, [FromQuery] int mainAccountId)
         {
             var result = await _accountService.GetSubAccountsAsync(tenantId, mainAccountId);
+            return Ok(result);
+        }
+
+        [HttpGet("sub/{subAccountId}")]
+        [Authorize(Policy = "subaccount.read")]
+        public async Task<IActionResult> GetSubAccountById(int subAccountId)
+        {
+            var result = await _accountService.GetSubAccountByIdAsync(subAccountId);
+            if (result == null)
+                return NotFound(new { message = "Sub account not found" });
             return Ok(result);
         }
 
@@ -72,6 +92,17 @@ namespace MilkChillar.Api.Controllers
             var result = await _accountService.GetAccountsAsync(tenantId, subAccountId);
             return Ok(result);
         }
+
+        [HttpGet("{accountId}")]
+        [Authorize(Policy = "account.read")]
+        public async Task<IActionResult> GetAccountById(int accountId)
+        {
+            var result = await _accountService.GetAccountByIdAsync(accountId);
+            if (result == null)
+                return NotFound(new { message = "Account not found" });
+            return Ok(result);
+        }
+
 
         [HttpGet("chart")]
         [Authorize(Policy = "account.read")]
@@ -113,6 +144,115 @@ namespace MilkChillar.Api.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Update a Main Account
+        /// </summary>
+        [HttpPut("main/{mainAccountId}")]
+        [Authorize(Policy = "mainaccount.update")]
+        public async Task<IActionResult> UpdateMainAccount(int mainAccountId, [FromBody] CreateMainAccountRequest request)
+        {
+            try
+            {
+                await _accountService.UpdateMainAccountAsync(mainAccountId, request);
+                return Ok(new { message = "Main account updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete a Main Account
+        /// </summary>
+        [HttpDelete("main/{mainAccountId}")]
+        [Authorize(Policy = "mainaccount.delete")]
+        public async Task<IActionResult> DeleteMainAccount(int mainAccountId)
+        {
+            try
+            {
+                await _accountService.DeleteMainAccountAsync(mainAccountId);
+                return Ok(new { message = "Main account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Update a Sub Account
+        /// </summary>
+        [HttpPut("sub/{subAccountId}")]
+        [Authorize(Policy = "subaccount.update")]
+        public async Task<IActionResult> UpdateSubAccount(int subAccountId, [FromBody] CreateSubAccountRequest request)
+        {
+            try
+            {
+                await _accountService.UpdateSubAccountAsync(subAccountId, request);
+                return Ok(new { message = "Sub account updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete a Sub Account
+        /// </summary>
+        [HttpDelete("sub/{subAccountId}")]
+        [Authorize(Policy = "subaccount.delete")]
+        public async Task<IActionResult> DeleteSubAccount(int subAccountId)
+        {
+            try
+            {
+                await _accountService.DeleteSubAccountAsync(subAccountId);
+                return Ok(new { message = "Sub account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Update an Account
+        /// </summary>
+        [HttpPut("{accountId}")]
+        [Authorize(Policy = "account.update")]
+        public async Task<IActionResult> UpdateAccount(int accountId, [FromBody] CreateAccountRequest request)
+        {
+            try
+            {
+                await _accountService.UpdateAccountAsync(accountId, request);
+                return Ok(new { message = "Account updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete an Account
+        /// </summary>
+        [HttpDelete("{accountId}")]
+        [Authorize(Policy = "account.delete")]
+        public async Task<IActionResult> DeleteAccount(int accountId)
+        {
+            try
+            {
+                await _accountService.DeleteAccountAsync(accountId);
+                return Ok(new { message = "Account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
 
 
     }
