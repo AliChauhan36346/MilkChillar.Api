@@ -88,13 +88,14 @@ namespace MilkChillar.Infrastructure.Services.Reports
             var receives = BuildChillarReceivesQuery(query, tenantId);
             var sales = BuildChillarSalesQuery(query, tenantId);
 
-            // Calculate previous stock
+            // Calculate previous stock (before selected date)
             var previousStockLiters = await CalculatePreviousStockAsync(query, tenantId);
 
-            // Calculate current range totals
+            // Calculate current range totals (within selected date range)
             var totalReceives = await receives.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
-            var totalSales = await sales.SumAsync(s => (decimal?)s.NetLiters) ?? 0m;
+            var totalSales = await sales.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
 
+            // Current Stock = Previous Stock + Total Receive - Total Sales
             var currentStock = ReportCalculationHelper.CalculateNetBalance(previousStockLiters, totalReceives, totalSales);
 
             return new ChillarInchargeDashboardStatsDto
@@ -144,12 +145,6 @@ namespace MilkChillar.Infrastructure.Services.Reports
                                                        p.Date >= query.StartDate &&
                                                        p.Date <= query.EndDate);
 
-            if (!string.IsNullOrWhiteSpace(query.TimeOfDay))
-            {
-                var time = query.TimeOfDay.ToLower();
-                purchases = purchases.Where(p => p.TimeOfDay.ToLower() == time);
-            }
-
             if (query.DodhiId.HasValue)
             {
                 purchases = purchases.Where(p => p.DodhiId == query.DodhiId.Value);
@@ -174,12 +169,6 @@ namespace MilkChillar.Infrastructure.Services.Reports
                                                        r.Date >= query.StartDate &&
                                                        r.Date <= query.EndDate);
 
-            if (!string.IsNullOrWhiteSpace(query.TimeOfDay))
-            {
-                var time = query.TimeOfDay.ToLower();
-                receives = receives.Where(r => r.TimeOfDay.ToLower() == time);
-            }
-
             if (query.DodhiId.HasValue)
             {
                 receives = receives.Where(r => r.DodhiId == query.DodhiId.Value);
@@ -197,6 +186,14 @@ namespace MilkChillar.Infrastructure.Services.Reports
         {
             var receives = _dbContext.ChillarReceives.Where(r => r.TenantId == tenantId);
 
+            // Apply date range filters
+            if (query.StartDate != default)
+                receives = receives.Where(r => r.Date >= query.StartDate);
+
+            if (query.EndDate != default)
+                receives = receives.Where(r => r.Date <= query.EndDate);
+
+            // Apply other filters
             if (query.ChillarId.HasValue)
                 receives = receives.Where(r => r.ChillarId == query.ChillarId.Value);
 
@@ -213,6 +210,14 @@ namespace MilkChillar.Infrastructure.Services.Reports
         {
             var sales = _dbContext.Sales.Where(s => s.TenantId == tenantId);
 
+            // Apply date range filters
+            if (query.StartDate != default)
+                sales = sales.Where(s => s.Date >= query.StartDate);
+
+            if (query.EndDate != default)
+                sales = sales.Where(s => s.Date <= query.EndDate);
+
+            // Apply other filters
             if (query.ChillarId.HasValue)
                 sales = sales.Where(s => s.ChillarId == query.ChillarId.Value);
 
@@ -223,45 +228,13 @@ namespace MilkChillar.Infrastructure.Services.Reports
             IQueryable<ChillarReceive> receives,
             ChillarInchargeDashboardQuery query)
         {
-            if (query.StartDate == default || query.EndDate == default)
-                return receives;
-
-            // Start date logic
-            if (!string.IsNullOrEmpty(query.StartTimeOfDay))
-            {
-                if (query.StartTimeOfDay.Equals("morning", StringComparison.OrdinalIgnoreCase))
-                {
-                    receives = receives.Where(r =>
-                        (r.Date > query.StartDate) ||
-                        (r.Date == query.StartDate && r.TimeOfDay.ToLower() == "morning"));
-                }
-                else if (query.StartTimeOfDay.Equals("evening", StringComparison.OrdinalIgnoreCase))
-                {
-                    receives = receives.Where(r =>
-                        (r.Date > query.StartDate) ||
-                        (r.Date == query.StartDate && r.TimeOfDay.ToLower() == "evening"));
-                }
-            }
-            else
+            // Simple date filter - no morning/evening logic
+            if (query.StartDate != default)
             {
                 receives = receives.Where(r => r.Date >= query.StartDate);
             }
 
-            // End date logic
-            if (!string.IsNullOrEmpty(query.EndTimeOfDay))
-            {
-                if (query.EndTimeOfDay.Equals("morning", StringComparison.OrdinalIgnoreCase))
-                {
-                    receives = receives.Where(r =>
-                        (r.Date < query.EndDate) ||
-                        (r.Date == query.EndDate && r.TimeOfDay.ToLower() == "morning"));
-                }
-                else if (query.EndTimeOfDay.Equals("evening", StringComparison.OrdinalIgnoreCase))
-                {
-                    receives = receives.Where(r => r.Date <= query.EndDate);
-                }
-            }
-            else
+            if (query.EndDate != default)
             {
                 receives = receives.Where(r => r.Date <= query.EndDate);
             }
@@ -285,22 +258,8 @@ namespace MilkChillar.Infrastructure.Services.Reports
             if (query.ChillarId.HasValue)
                 sales = sales.Where(s => s.ChillarId == query.ChillarId.Value);
 
-            // Handle morning on start date
-            if (!string.IsNullOrWhiteSpace(query.StartTimeOfDay) && 
-                query.StartTimeOfDay.ToLower() == "evening")
-            {
-                receives = receives.Concat(_dbContext.ChillarReceives.Where(r =>
-                    r.TenantId == tenantId &&
-                    r.Date == query.StartDate &&
-                    r.TimeOfDay.ToLower() == "morning"));
-
-                sales = sales.Concat(_dbContext.Sales.Where(s =>
-                    s.TenantId == tenantId &&
-                    s.Date == query.StartDate));
-            }
-
             var totalReceives = await receives.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
-            var totalSales = await sales.SumAsync(s => (decimal?)s.NetLiters) ?? 0m;
+            var totalSales = await sales.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
 
             return totalReceives - totalSales;
         }
