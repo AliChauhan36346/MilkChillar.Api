@@ -26,7 +26,9 @@ namespace MilkChillar.Infrastructure.Services.Reports
             int chillarId,
             DateTime startDate,
             DateTime endDate,
-            int tenantId)
+            int tenantId,
+            string? startTimeOfDay = null,
+            string? endTimeOfDay = null)
         {
             // Convert dates to DateOnly for filtering
             var dateStart = DateOnly.FromDateTime(startDate.Date);
@@ -43,12 +45,17 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 return new DodhiReportOverallSummaryDto();
             }
 
-            // Get purchase totals
-            var purchaseData = await _dbContext.Purchases
+            // Get purchase totals with optional time filtering
+            var purchaseQuery = _dbContext.Purchases
                 .Where(p => p.TenantId == tenantId &&
                             dodhiIds.Contains(p.DodhiId) &&
                             p.Date >= dateStart &&
-                            p.Date <= dateEnd)
+                            p.Date <= dateEnd);
+
+            // Apply time filters
+            purchaseQuery = ApplyTimeFilters(purchaseQuery, dateStart, dateEnd, startTimeOfDay, endTimeOfDay);
+
+            var purchaseData = await purchaseQuery
                 .GroupBy(p => 1)
                 .Select(g => new
                 {
@@ -58,13 +65,18 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 })
                 .FirstOrDefaultAsync();
 
-            // Get receive totals
-            var receiveData = await _dbContext.ChillarReceives
+            // Get receive totals with optional time filtering
+            var receiveQuery = _dbContext.ChillarReceives
                 .Where(r => r.TenantId == tenantId &&
                             r.ChillarId == chillarId &&
                             dodhiIds.Contains(r.DodhiId) &&
                             r.Date >= dateStart &&
-                            r.Date <= dateEnd)
+                            r.Date <= dateEnd);
+
+            // Apply time filters
+            receiveQuery = ApplyTimeFiltersForReceive(receiveQuery, dateStart, dateEnd, startTimeOfDay, endTimeOfDay);
+
+            var receiveData = await receiveQuery
                 .GroupBy(r => 1)
                 .Select(g => new
                 {
@@ -106,7 +118,9 @@ namespace MilkChillar.Infrastructure.Services.Reports
             int chillarId,
             DateTime startDate,
             DateTime endDate,
-            int tenantId)
+            int tenantId,
+            string? startTimeOfDay = null,
+            string? endTimeOfDay = null)
         {
             // Convert dates to DateOnly for filtering
             var dateStart = DateOnly.FromDateTime(startDate.Date);
@@ -123,13 +137,18 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 return new List<DodhiSummaryDto>();
             }
 
-            // Get purchase data by dodhi
-            var purchaseData = await _dbContext.Purchases
+            // Get purchase data by dodhi with optional time filtering
+            var purchaseQuery = _dbContext.Purchases
                 .Include(p => p.Dodhi)
                 .Where(p => p.TenantId == tenantId &&
                             dodhiIds.Contains(p.DodhiId) &&
                             p.Date >= dateStart &&
-                            p.Date <= dateEnd)
+                            p.Date <= dateEnd);
+
+            // Apply time filters
+            purchaseQuery = ApplyTimeFilters(purchaseQuery, dateStart, dateEnd, startTimeOfDay, endTimeOfDay);
+
+            var purchaseData = await purchaseQuery
                 .GroupBy(p => new { p.DodhiId, p.Dodhi.FullName })
                 .Select(g => new
                 {
@@ -141,15 +160,20 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 })
                 .ToListAsync();
 
-            // Get receive data by dodhi
-            var receiveData = await _dbContext.ChillarReceives
+            // Get receive data by dodhi with optional time filtering
+            var receiveQuery = _dbContext.ChillarReceives
                 .Include(r => r.Dodhi)
                 .Include(r => r.Chillar)
                 .Where(r => r.TenantId == tenantId &&
                             r.ChillarId == chillarId &&
                             dodhiIds.Contains(r.DodhiId) &&
                             r.Date >= dateStart &&
-                            r.Date <= dateEnd)
+                            r.Date <= dateEnd);
+
+            // Apply time filters
+            receiveQuery = ApplyTimeFiltersForReceive(receiveQuery, dateStart, dateEnd, startTimeOfDay, endTimeOfDay);
+
+            var receiveData = await receiveQuery
                 .GroupBy(r => new { r.DodhiId, r.Dodhi.FullName, r.Chillar.Name })
                 .Select(g => new
                 {
@@ -377,6 +401,208 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 return "Average";
             else
                 return "Poor";
+        }
+
+        /// <summary>
+        /// Apply time filters to Purchase query based on start and end dates/times
+        /// Logic:
+        /// - Same day: morning-morning (only morning), morning-evening (full day), evening-evening (only evening)
+        /// - Multi-day: start date uses start time, end date uses end time, middle dates include full day
+        /// </summary>
+        private IQueryable<Purchase> ApplyTimeFilters(
+            IQueryable<Purchase> query,
+            DateOnly dateStart,
+            DateOnly dateEnd,
+            string? startTimeOfDay,
+            string? endTimeOfDay)
+        {
+            // If no time filters specified, return as is
+            if (string.IsNullOrWhiteSpace(startTimeOfDay) && string.IsNullOrWhiteSpace(endTimeOfDay))
+                return query;
+
+            // Same day filtering
+            if (dateStart == dateEnd)
+            {
+                if (!string.IsNullOrWhiteSpace(startTimeOfDay) && !string.IsNullOrWhiteSpace(endTimeOfDay))
+                {
+                    var startTime = startTimeOfDay.ToLower();
+                    var endTime = endTimeOfDay.ToLower();
+
+                    if (startTime == endTime)
+                    {
+                        // Both same time: only that time
+                        query = query.Where(p => p.Date == dateStart && p.TimeOfDay.ToLower() == startTime);
+                    }
+                    else if (startTime == "morning" && endTime == "evening")
+                    {
+                        // Morning to evening on same day: full day
+                        query = query.Where(p => p.Date == dateStart);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(startTimeOfDay))
+                {
+                    var startTime = startTimeOfDay.ToLower();
+                    query = query.Where(p => p.Date == dateStart && p.TimeOfDay.ToLower() == startTime);
+                }
+                else if (!string.IsNullOrWhiteSpace(endTimeOfDay))
+                {
+                    var endTime = endTimeOfDay.ToLower();
+                    query = query.Where(p => p.Date == dateStart && p.TimeOfDay.ToLower() == endTime);
+                }
+            }
+            else
+            {
+                // Multi-day filtering
+                // Start date filter
+                if (!string.IsNullOrWhiteSpace(startTimeOfDay))
+                {
+                    var startTime = startTimeOfDay.ToLower();
+                    if (startTime == "morning")
+                    {
+                        // Include morning onwards on start date
+                        query = query.Where(p =>
+                            (p.Date > dateStart) ||
+                            (p.Date == dateStart && p.TimeOfDay.ToLower() == "morning"));
+                    }
+                    else if (startTime == "evening")
+                    {
+                        // Include only evening on start date
+                        query = query.Where(p =>
+                            (p.Date > dateStart) ||
+                            (p.Date == dateStart && p.TimeOfDay.ToLower() == "evening"));
+                    }
+                }
+                else
+                {
+                    // No start time specified, include all from start date
+                    query = query.Where(p => p.Date >= dateStart);
+                }
+
+                // End date filter
+                if (!string.IsNullOrWhiteSpace(endTimeOfDay))
+                {
+                    var endTime = endTimeOfDay.ToLower();
+                    if (endTime == "morning")
+                    {
+                        // Include only up to morning on end date
+                        query = query.Where(p =>
+                            (p.Date < dateEnd) ||
+                            (p.Date == dateEnd && p.TimeOfDay.ToLower() == "morning"));
+                    }
+                    else if (endTime == "evening")
+                    {
+                        // Include full day on end date
+                        query = query.Where(p => p.Date <= dateEnd);
+                    }
+                }
+                else
+                {
+                    // No end time specified, include all up to end date
+                    query = query.Where(p => p.Date <= dateEnd);
+                }
+            }
+
+            return query;
+        }
+
+        /// <summary>
+        /// Apply time filters to ChillarReceive query based on start and end dates/times
+        /// Same logic as ApplyTimeFilters but for ChillarReceive entity
+        /// </summary>
+        private IQueryable<ChillarReceive> ApplyTimeFiltersForReceive(
+            IQueryable<ChillarReceive> query,
+            DateOnly dateStart,
+            DateOnly dateEnd,
+            string? startTimeOfDay,
+            string? endTimeOfDay)
+        {
+            // If no time filters specified, return as is
+            if (string.IsNullOrWhiteSpace(startTimeOfDay) && string.IsNullOrWhiteSpace(endTimeOfDay))
+                return query;
+
+            // Same day filtering
+            if (dateStart == dateEnd)
+            {
+                if (!string.IsNullOrWhiteSpace(startTimeOfDay) && !string.IsNullOrWhiteSpace(endTimeOfDay))
+                {
+                    var startTime = startTimeOfDay.ToLower();
+                    var endTime = endTimeOfDay.ToLower();
+
+                    if (startTime == endTime)
+                    {
+                        // Both same time: only that time
+                        query = query.Where(r => r.Date == dateStart && r.TimeOfDay.ToLower() == startTime);
+                    }
+                    else if (startTime == "morning" && endTime == "evening")
+                    {
+                        // Morning to evening on same day: full day
+                        query = query.Where(r => r.Date == dateStart);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(startTimeOfDay))
+                {
+                    var startTime = startTimeOfDay.ToLower();
+                    query = query.Where(r => r.Date == dateStart && r.TimeOfDay.ToLower() == startTime);
+                }
+                else if (!string.IsNullOrWhiteSpace(endTimeOfDay))
+                {
+                    var endTime = endTimeOfDay.ToLower();
+                    query = query.Where(r => r.Date == dateStart && r.TimeOfDay.ToLower() == endTime);
+                }
+            }
+            else
+            {
+                // Multi-day filtering
+                // Start date filter
+                if (!string.IsNullOrWhiteSpace(startTimeOfDay))
+                {
+                    var startTime = startTimeOfDay.ToLower();
+                    if (startTime == "morning")
+                    {
+                        // Include morning onwards on start date
+                        query = query.Where(r =>
+                            (r.Date > dateStart) ||
+                            (r.Date == dateStart && r.TimeOfDay.ToLower() == "morning"));
+                    }
+                    else if (startTime == "evening")
+                    {
+                        // Include only evening on start date
+                        query = query.Where(r =>
+                            (r.Date > dateStart) ||
+                            (r.Date == dateStart && r.TimeOfDay.ToLower() == "evening"));
+                    }
+                }
+                else
+                {
+                    // No start time specified, include all from start date
+                    query = query.Where(r => r.Date >= dateStart);
+                }
+
+                // End date filter
+                if (!string.IsNullOrWhiteSpace(endTimeOfDay))
+                {
+                    var endTime = endTimeOfDay.ToLower();
+                    if (endTime == "morning")
+                    {
+                        // Include only up to morning on end date
+                        query = query.Where(r =>
+                            (r.Date < dateEnd) ||
+                            (r.Date == dateEnd && r.TimeOfDay.ToLower() == "morning"));
+                    }
+                    else if (endTime == "evening")
+                    {
+                        // Include full day on end date
+                        query = query.Where(r => r.Date <= dateEnd);
+                    }
+                }
+                else
+                {
+                    // No end time specified, include all up to end date
+                    query = query.Where(r => r.Date <= dateEnd);
+                }
+            }
+
+            return query;
         }
     }
 
