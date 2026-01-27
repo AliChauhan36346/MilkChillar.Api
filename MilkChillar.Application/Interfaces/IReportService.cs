@@ -52,21 +52,27 @@ namespace MilkChillar.Application.Interfaces
 
         /// <summary>
         /// Get overall summary for all dodhis in a chillar (total purchase/receive/loss)
+        /// Optional: Filter by start and end time of day (morning/evening)
         /// </summary>
         Task<DodhiReportOverallSummaryDto> GetOverallDodhiSummaryAsync(
             int chillarId,
             DateTime startDate,
             DateTime endDate,
-            int tenantId);
+            int tenantId,
+            string? startTimeOfDay = null,
+            string? endTimeOfDay = null);
 
         /// <summary>
         /// Get single dodhi-wise summary (individual rows for each dodhi)
+        /// Optional: Filter by start and end time of day (morning/evening)
         /// </summary>
         Task<List<DodhiSummaryDto>> GetSingleDodhiSummaryAsync(
             int chillarId,
             DateTime startDate,
             DateTime endDate,
-            int tenantId);
+            int tenantId,
+            string? startTimeOfDay = null,
+            string? endTimeOfDay = null);
 
         /// <summary>
         /// Get detailed transaction-wise data for a specific dodhi

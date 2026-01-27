@@ -105,15 +105,19 @@ namespace MilkChillar.Infrastructure.Services
             int chillarId,
             DateTime startDate,
             DateTime endDate,
-            int tenantId)
-            => await _dodhiReportService.GetOverallDodhiSummaryAsync(chillarId, startDate, endDate, tenantId);
+            int tenantId,
+            string? startTimeOfDay = null,
+            string? endTimeOfDay = null)
+            => await _dodhiReportService.GetOverallDodhiSummaryAsync(chillarId, startDate, endDate, tenantId, startTimeOfDay, endTimeOfDay);
 
         public async Task<List<DodhiSummaryDto>> GetSingleDodhiSummaryAsync(
             int chillarId,
             DateTime startDate,
             DateTime endDate,
-            int tenantId)
-            => await _dodhiReportService.GetSingleDodhiSummaryAsync(chillarId, startDate, endDate, tenantId);
+            int tenantId,
+            string? startTimeOfDay = null,
+            string? endTimeOfDay = null)
+            => await _dodhiReportService.GetSingleDodhiSummaryAsync(chillarId, startDate, endDate, tenantId, startTimeOfDay, endTimeOfDay);
 
         public async Task<DodhiPurchaseReceiveDetailDto> GetDodhiPurchaseReceiveDetailAsync(
             int dodhiId,

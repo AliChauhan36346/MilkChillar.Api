@@ -227,7 +227,9 @@ namespace MilkChillar.Api.Controllers
         public async Task<IActionResult> GetOverallDodhiSummary(
             [FromQuery] int chillarId,
             [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate)
+            [FromQuery] DateTime endDate,
+            [FromQuery] string? startTimeOfDay = null,
+            [FromQuery] string? endTimeOfDay = null)
         {
             int tenantId = GetTenantId();
             if (tenantId == 0)
@@ -242,7 +244,7 @@ namespace MilkChillar.Api.Controllers
             try
             {
                 var result = await _dashboardStatsService.GetOverallDodhiSummaryAsync(
-                    chillarId, startDate, endDate, tenantId);
+                    chillarId, startDate, endDate, tenantId, startTimeOfDay, endTimeOfDay);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -258,7 +260,9 @@ namespace MilkChillar.Api.Controllers
         public async Task<IActionResult> GetSingleDodhiSummary(
             [FromQuery] int chillarId,
             [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate)
+            [FromQuery] DateTime endDate,
+            [FromQuery] string? startTimeOfDay = null,
+            [FromQuery] string? endTimeOfDay = null)
         {
             int tenantId = GetTenantId();
             if (tenantId == 0)
@@ -273,7 +277,7 @@ namespace MilkChillar.Api.Controllers
             try
             {
                 var result = await _dashboardStatsService.GetSingleDodhiSummaryAsync(
-                    chillarId, startDate, endDate, tenantId);
+                    chillarId, startDate, endDate, tenantId, startTimeOfDay, endTimeOfDay);
                 return Ok(result);
             }
             catch (Exception ex)
