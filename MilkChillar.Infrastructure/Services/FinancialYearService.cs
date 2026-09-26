@@ -545,7 +545,7 @@ namespace MilkChillar.Infrastructure.Services
                 await _context.Database.ExecuteSqlRawAsync(@"
                     CREATE TABLE IF NOT EXISTS public.financial_years (
                         financial_year_id SERIAL PRIMARY KEY,
-                        tenant_id INT NOT NULL REFERENCES public.tenants(tenant_id) ON DELETE CASCADE,
+                        tenant_id INT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
                         name VARCHAR(50) NOT NULL,
                         code VARCHAR(20) NOT NULL,
                         start_date TIMESTAMP WITH TIME ZONE NOT NULL,
