@@ -210,9 +210,42 @@ namespace MilkChillar.Infrastructure.Services
                 throw new InvalidOperationException("Please type 'RESET' or 'CONFIRM' to authorize data cleanup.");
             }
 
+            const string disableTriggersSql = @"
+                ALTER TABLE purchase DISABLE TRIGGER USER;
+                ALTER TABLE sales DISABLE TRIGGER USER;
+                ALTER TABLE cash_payments DISABLE TRIGGER USER;
+                ALTER TABLE cash_payment_lines DISABLE TRIGGER USER;
+                ALTER TABLE cash_receipts DISABLE TRIGGER USER;
+                ALTER TABLE cash_receipt_lines DISABLE TRIGGER USER;
+                ALTER TABLE bank_payments DISABLE TRIGGER USER;
+                ALTER TABLE bank_payment_lines DISABLE TRIGGER USER;
+                ALTER TABLE bank_receipts DISABLE TRIGGER USER;
+                ALTER TABLE bank_receipt_lines DISABLE TRIGGER USER;
+                ALTER TABLE account_opening_balances DISABLE TRIGGER USER;
+                ALTER TABLE journal_entry_lines DISABLE TRIGGER USER;
+            ";
+
+            const string enableTriggersSql = @"
+                ALTER TABLE purchase ENABLE TRIGGER USER;
+                ALTER TABLE sales ENABLE TRIGGER USER;
+                ALTER TABLE cash_payments ENABLE TRIGGER USER;
+                ALTER TABLE cash_payment_lines ENABLE TRIGGER USER;
+                ALTER TABLE cash_receipts ENABLE TRIGGER USER;
+                ALTER TABLE cash_receipt_lines ENABLE TRIGGER USER;
+                ALTER TABLE bank_payments ENABLE TRIGGER USER;
+                ALTER TABLE bank_payment_lines ENABLE TRIGGER USER;
+                ALTER TABLE bank_receipts ENABLE TRIGGER USER;
+                ALTER TABLE bank_receipt_lines ENABLE TRIGGER USER;
+                ALTER TABLE account_opening_balances ENABLE TRIGGER USER;
+                ALTER TABLE journal_entry_lines ENABLE TRIGGER USER;
+            ";
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // Temporarily disable user triggers during bulk purge to prevent tuple-modified conflicts
+                await _context.Database.ExecuteSqlRawAsync(disableTriggersSql);
+
                 var result = new DataCleanupResultDto { Success = true };
 
                 if (request.ClearPurchases)
@@ -377,10 +410,12 @@ namespace MilkChillar.Infrastructure.Services
                         .Where(ob => ob.TenantId == tenantId)
                         .ExecuteDeleteAsync();
 
-                    // Unlink retained earnings before deleting accounts
+                    // Unlink retained earnings and purge bank accounts before deleting accounts
                     await _context.FinancialYears
                         .Where(fy => fy.TenantId == tenantId)
                         .ExecuteUpdateAsync(s => s.SetProperty(fy => fy.RetainedEarningsAccountId, (int?)null));
+
+                    await _context.Database.ExecuteSqlRawAsync("DELETE FROM bank_accounts WHERE tenant_id = {0}", tenantId);
 
                     result.DeletedAccounts = await _context.Accounts
                         .Where(a => a.TenantId == tenantId)
@@ -404,6 +439,18 @@ namespace MilkChillar.Infrastructure.Services
             {
                 await transaction.RollbackAsync();
                 throw;
+            }
+            finally
+            {
+                // Re-enable user triggers
+                try
+                {
+                    await _context.Database.ExecuteSqlRawAsync(enableTriggersSql);
+                }
+                catch
+                {
+                    // Ignore or log if connection closed
+                }
             }
         }
     }
