@@ -11,6 +11,7 @@ using MilkChillar.Application.Interfaces;
 using MilkChillar.Infrastructure.Services;
 using MilkChillar.Infrastructure.Services.Helpers;
 using MilkChillar.Domain.Entities;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -189,10 +190,9 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // Forward headers from reverse proxies (Render, Koyeb, Railway, AWS, Cloudflare)
-app.UseForwardedHeaders(new Microsoft.AspNetCore.HttpOverrides.ForwardedHeadersOptions
+app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | 
-                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
 // ✅ CORS must be early in the pipeline
