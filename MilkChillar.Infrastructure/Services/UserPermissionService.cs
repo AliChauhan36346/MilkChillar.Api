@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.UserPermissions;
+using MilkChillar.Application.DTOs.UserPermissions;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -126,6 +126,90 @@ namespace MilkChillar.Infrastructure.Services
                 }).ToListAsync();
 
             return result;
+        }
+
+        public async Task<List<UserPermissionDto>> SyncUserPermissionsAsync(int userId, List<int> permissionIds, int tenantId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId && u.TenantId == tenantId);
+            if (user == null)
+                throw new Exception("User not found or doesn't belong to the tenant.");
+
+            var currentPermissions = await _context.UserPermissions
+                .Where(up => up.UserId == userId)
+                .ToListAsync();
+
+            var currentIds = currentPermissions.Select(p => p.PermissionId).ToHashSet();
+            var targetIds = (permissionIds ?? new List<int>()).Distinct().ToHashSet();
+
+            // To delete
+            var toDelete = currentPermissions.Where(cp => !targetIds.Contains(cp.PermissionId)).ToList();
+            if (toDelete.Any())
+            {
+                _context.UserPermissions.RemoveRange(toDelete);
+            }
+
+            // To add
+            var toAddIds = targetIds.Where(id => !currentIds.Contains(id)).ToList();
+            if (toAddIds.Any())
+            {
+                var newPermissions = toAddIds.Select(pid => new UserPermission
+                {
+                    UserId = userId,
+                    PermissionId = pid,
+                    GrantedAt = DateTime.UtcNow
+                }).ToList();
+                _context.UserPermissions.AddRange(newPermissions);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await _context.UserPermissions
+                .Where(up => up.UserId == userId)
+                .Include(up => up.Permission)
+                .Select(up => new UserPermissionDto
+                {
+                    UserId = up.UserId,
+                    PermissionId = up.PermissionId,
+                    PermissionName = up.Permission.Name,
+                    GrantedAt = up.GrantedAt
+                }).ToListAsync();
+        }
+
+        public async Task<UserEffectivePermissionsDto> GetEffectivePermissionsAsync(int userId, int tenantId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
+                .Include(u => u.UserPermissions)
+                    .ThenInclude(up => up.Permission)
+                .FirstOrDefaultAsync(u => u.UserId == userId && u.TenantId == tenantId);
+
+            if (user == null)
+                throw new Exception("User not found or doesn't belong to the tenant.");
+
+            var rolePermissions = user.Role?.RolePermissions.ToList() ?? new List<RolePermission>();
+            var rolePermissionIds = rolePermissions.Select(rp => rp.PermissionId).Distinct().ToList();
+            var rolePermissionNames = rolePermissions.Select(rp => rp.Permission.Name).Distinct().ToList();
+
+            var userPermissions = user.UserPermissions.ToList();
+            var directUserPermissionIds = userPermissions.Select(up => up.PermissionId).Distinct().ToList();
+            var directUserPermissionNames = userPermissions.Select(up => up.Permission.Name).Distinct().ToList();
+
+            var effectiveNames = rolePermissionNames.Union(directUserPermissionNames).Distinct().ToList();
+
+            return new UserEffectivePermissionsDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                RoleId = user.RoleId,
+                RoleName = user.Role?.Name,
+                RolePermissionIds = rolePermissionIds,
+                RolePermissionNames = rolePermissionNames,
+                DirectUserPermissionIds = directUserPermissionIds,
+                DirectUserPermissionNames = directUserPermissionNames,
+                EffectivePermissionNames = effectiveNames
+            };
         }
     }
 }

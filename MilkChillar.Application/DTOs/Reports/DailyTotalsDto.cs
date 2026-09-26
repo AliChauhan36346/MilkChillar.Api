@@ -16,6 +16,11 @@ namespace MilkChillar.Application.DTOs.Reports
         public decimal TsDifference { get; set; }
         public decimal SalesAmount { get; set; }
         public decimal GrossProfit { get; set; }
+        
+        // Stock tracking fields
+        public decimal TotalGrossSalesLiters { get; set; }
+        public decimal PreviousStockLiters { get; set; }
+        public decimal CurrentStockLiters { get; set; }
     }
 
     public class DailyTotalsResultDto

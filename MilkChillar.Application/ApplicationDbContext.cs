@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using MilkChillar.Domain.Entities;
 
 namespace MilkChillar.Application;
@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<BankReceipt> BankReceipts { get; set; }
     public DbSet<BankReceiptLine> BankReceiptLines { get; set; }
     public DbSet<AccountBalance> AccountBalances { get; set; }
+    public DbSet<FinancialYear> FinancialYears { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -984,6 +985,58 @@ public class ApplicationDbContext : DbContext
                 .HasDatabaseName("idx_account_balances_account");
         });
 
+        modelBuilder.Entity<FinancialYear>(entity =>
+        {
+            entity.ToTable("financial_years");
+            entity.HasKey(e => e.FinancialYearId);
 
+            entity.Property(e => e.FinancialYearId).HasColumnName("financial_year_id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Code).HasColumnName("code").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.StartDate).HasColumnName("start_date").IsRequired();
+            entity.Property(e => e.EndDate).HasColumnName("end_date").IsRequired();
+            entity.Property(e => e.IsActive).HasColumnName("is_active").IsRequired();
+            entity.Property(e => e.IsClosed).HasColumnName("is_closed").IsRequired();
+            entity.Property(e => e.ClosedAt).HasColumnName("closed_at");
+            entity.Property(e => e.ClosedBy).HasColumnName("closed_by");
+            entity.Property(e => e.ClosingJournalEntryId).HasColumnName("closing_journal_entry_id");
+            entity.Property(e => e.RetainedEarningsAccountId).HasColumnName("retained_earnings_account_id");
+            entity.Property(e => e.Notes).HasColumnName("notes").HasMaxLength(255);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // Relationships
+            entity.HasOne(e => e.Tenant)
+                .WithMany(t => t.FinancialYears)
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ClosedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ClosedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.ClosingJournalEntry)
+                .WithMany()
+                .HasForeignKey(e => e.ClosingJournalEntryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.RetainedEarningsAccount)
+                .WithMany()
+                .HasForeignKey(e => e.RetainedEarningsAccountId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Indexes
+            entity.HasIndex(e => new { e.TenantId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("idx_financial_years_tenant_name");
+
+            entity.HasIndex(e => new { e.TenantId, e.IsActive })
+                .HasDatabaseName("idx_financial_years_tenant_active");
+
+            entity.HasIndex(e => new { e.TenantId, e.StartDate, e.EndDate })
+                .HasDatabaseName("idx_financial_years_tenant_dates");
+        });
     }
 }

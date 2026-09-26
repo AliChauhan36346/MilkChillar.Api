@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.Maintenance;
+using MilkChillar.Application.DTOs.Maintenance;
 
 namespace MilkChillar.Application.Interfaces
 {
@@ -12,6 +12,8 @@ namespace MilkChillar.Application.Interfaces
         Task<bool> MassUpdateBuyerRates(decimal newRate, int tenantId);
         Task<bool> UpdateBuyerRateForPeriod(int accountId, decimal newRate, DateOnly startDate, DateOnly endDate, int tenantId);
         Task<bool> MassUpdateSupplierDodhi(int dodhiId, int[] supplierIds, int tenantId);
+        Task<DataCleanupPreviewDto> GetCleanupPreviewAsync(int tenantId);
+        Task<DataCleanupResultDto> ExecuteCleanupAsync(DataCleanupRequestDto request, int tenantId, int userId);
     }
 
 

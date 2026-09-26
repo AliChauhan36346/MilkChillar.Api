@@ -35,6 +35,86 @@ namespace MilkChillar.Infrastructure.Services.Reports
             // Get Due Receipts (Buyers)
             var (dueReceipts, dueReceiptsCount) = await GetDueReceiptsAsync(tenantId);
 
+            // Operational Metrics for Today
+            var todayDateOnly = DateOnly.FromDateTime(today);
+            var todayPurchases = await _dbContext.Purchases
+                .Where(p => p.TenantId == tenantId && p.Date == todayDateOnly)
+                .Select(p => new { p.GrossLiters, p.Rate })
+                .ToListAsync();
+            decimal todayPurchaseLiters = todayPurchases.Sum(p => p.GrossLiters);
+            decimal todayPurchaseAmount = todayPurchases.Sum(p => p.GrossLiters * p.Rate);
+
+            var todaySales = await _dbContext.Sales
+                .Where(s => s.TenantId == tenantId && s.Date == todayDateOnly)
+                .Select(s => new { s.NetLiters, s.Rate })
+                .ToListAsync();
+            decimal todaySalesLiters = todaySales.Sum(s => s.NetLiters);
+            decimal todaySalesAmount = todaySales.Sum(s => s.NetLiters * s.Rate);
+
+            // Last 6 Months Financial Trends (Live Real P&L)
+            var sixMonthsAgo = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+            var journalData = await _dbContext.JournalEntryLines
+                .Include(jel => jel.JournalEntry)
+                .Include(jel => jel.Account)
+                    .ThenInclude(a => a.SubAccount)
+                        .ThenInclude(sa => sa.MainAccount)
+                .Where(jel => jel.JournalEntry.TenantId == tenantId &&
+                              jel.JournalEntry.EntryDate >= sixMonthsAgo)
+                .Select(jel => new
+                {
+                    jel.JournalEntry.EntryDate,
+                    jel.Debit,
+                    jel.Credit,
+                    MainCode = jel.Account.SubAccount != null && jel.Account.SubAccount.MainAccount != null
+                        ? jel.Account.SubAccount.MainAccount.MainAccountCode
+                        : null
+                })
+                .ToListAsync();
+
+            var monthlyTrends = new List<MonthlyFinancialTrendDto>();
+            for (int i = 5; i >= 0; i--)
+            {
+                var targetMonthDate = today.AddMonths(-i);
+                var yr = targetMonthDate.Year;
+                var mo = targetMonthDate.Month;
+
+                var monthLines = journalData.Where(x => x.EntryDate.Year == yr && x.EntryDate.Month == mo).ToList();
+                decimal rev = monthLines.Where(x => x.MainCode != null && x.MainCode.StartsWith("4"))
+                                        .Sum(x => x.Credit - x.Debit);
+                decimal exp = monthLines.Where(x => x.MainCode != null && (x.MainCode.StartsWith("5") || x.MainCode.StartsWith("6") || x.MainCode.StartsWith("7")))
+                                        .Sum(x => x.Debit - x.Credit);
+
+                monthlyTrends.Add(new MonthlyFinancialTrendDto
+                {
+                    MonthLabel = targetMonthDate.ToString("MMM"),
+                    Year = yr,
+                    Month = mo,
+                    Revenue = Math.Round(Math.Max(0, rev), 2),
+                    Expense = Math.Round(Math.Max(0, exp), 2)
+                });
+            }
+
+            // Recent 5 Transactions (Live Roznamcha Stream)
+            var recentLines = await _dbContext.JournalEntryLines
+                .Include(jel => jel.JournalEntry)
+                .Include(jel => jel.Account)
+                .Where(jel => jel.JournalEntry.TenantId == tenantId && (jel.Debit > 0 || jel.Credit > 0))
+                .OrderByDescending(jel => jel.JournalEntry.EntryDate)
+                .ThenByDescending(jel => jel.JournalLineId)
+                .Take(5)
+                .Select(jel => new RecentTransactionDto
+                {
+                    JournalEntryId = jel.JournalEntryId,
+                    EntryDate = jel.JournalEntry.EntryDate,
+                    SourceTable = jel.JournalEntry.SourceTable ?? "journal",
+                    Description = jel.JournalEntry.Description ?? jel.Narration ?? "Voucher Entry",
+                    AccountName = jel.Account != null ? jel.Account.Name : "Account",
+                    AccountCode = jel.Account != null ? jel.Account.AccountCode : "",
+                    Amount = jel.Debit > 0 ? jel.Debit : jel.Credit,
+                    TransactionType = jel.Debit > 0 ? "Debit" : "Credit"
+                })
+                .ToListAsync();
+
             return new AdminDashboardStatsDto
             {
                 CashBalance = cashBalance,
@@ -44,7 +124,13 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 DueReceipts = dueReceipts,
                 DueReceiptsCount = dueReceiptsCount,
                 TodayCashChange = todayCashChange,
-                TodayBankChange = todayBankChange
+                TodayBankChange = todayBankChange,
+                TodayPurchaseLiters = Math.Round(todayPurchaseLiters, 2),
+                TodayPurchaseAmount = Math.Round(todayPurchaseAmount, 2),
+                TodaySalesLiters = Math.Round(todaySalesLiters, 2),
+                TodaySalesAmount = Math.Round(todaySalesAmount, 2),
+                MonthlyTrends = monthlyTrends,
+                RecentTransactions = recentLines
             };
         }
 

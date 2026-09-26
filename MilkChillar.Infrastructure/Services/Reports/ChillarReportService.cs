@@ -3,6 +3,7 @@ using MilkChillar.Application.DTOs.ChillarReceive;
 using MilkChillar.Application.DTOs.Dashboard;
 using MilkChillar.Application.DTOs.Purchase;
 using MilkChillar.Application.DTOs.Reports;
+using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Domain.Entities;
 using MilkChillar.Infrastructure.Services.Helpers;
@@ -16,10 +17,17 @@ namespace MilkChillar.Infrastructure.Services.Reports
     public class ChillarReportService
     {
         private readonly ApplicationDbContext _dbContext;
+        private readonly IDateTimeFilterService _dateTimeFilterService;
+        private readonly IStockCalculationService _stockCalculationService;
 
-        public ChillarReportService(ApplicationDbContext dbContext)
+        public ChillarReportService(
+            ApplicationDbContext dbContext,
+            IDateTimeFilterService dateTimeFilterService,
+            IStockCalculationService stockCalculationService)
         {
             _dbContext = dbContext;
+            _dateTimeFilterService = dateTimeFilterService;
+            _stockCalculationService = stockCalculationService;
         }
 
         public async Task<DashboardStatsDto> GetDashboardStatsAsync(DashboardStatsQuery query, int tenantId)
@@ -85,15 +93,27 @@ namespace MilkChillar.Infrastructure.Services.Reports
             ChillarInchargeDashboardQuery query,
             int tenantId)
         {
-            var receives = BuildChillarReceivesQuery(query, tenantId);
-            var sales = BuildChillarSalesQuery(query, tenantId);
+            var dateStart = query.StartDate;
+            var dateEnd = query.EndDate;
 
-            // Calculate previous stock (before selected date)
-            var previousStockLiters = await CalculatePreviousStockAsync(query, tenantId);
+            // Build base queries
+            var receivesQuery = BuildChillarReceivesQuery(query, tenantId);
+            var salesQuery = BuildChillarSalesQuery(query, tenantId);
+
+            // Apply time filters using the helper service
+            receivesQuery = _dateTimeFilterService.ApplyChillarReceiveTimeFilter(
+                receivesQuery, dateStart, dateEnd, query.StartTimeOfDay, query.EndTimeOfDay);
+
+            salesQuery = _dateTimeFilterService.ApplySalesTimeFilter(
+                salesQuery, dateStart, dateEnd, query.StartTimeOfDay, query.EndTimeOfDay);
+
+            // Calculate previous stock using the helper service
+            var previousStockLiters = await _stockCalculationService.CalculatePreviousStockAsync(
+                query.ChillarId ?? 0, dateStart, query.StartTimeOfDay, tenantId);
 
             // Calculate current range totals (within selected date range)
-            var totalReceives = await receives.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
-            var totalSales = await sales.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
+            var totalReceives = await receivesQuery.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
+            var totalSales = await salesQuery.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
 
             // Current Stock = Previous Stock + Total Receive - Total Sales
             var currentStock = ReportCalculationHelper.CalculateNetBalance(previousStockLiters, totalReceives, totalSales);
@@ -228,7 +248,8 @@ namespace MilkChillar.Infrastructure.Services.Reports
             IQueryable<ChillarReceive> receives,
             ChillarInchargeDashboardQuery query)
         {
-            // Simple date filter - no morning/evening logic
+            // Now delegated to IDateTimeFilterService in GetChillarInchargeDashboardStatsAsync
+            // Kept for backward compatibility if used elsewhere
             if (query.StartDate != default)
             {
                 receives = receives.Where(r => r.Date >= query.StartDate);
@@ -240,28 +261,6 @@ namespace MilkChillar.Infrastructure.Services.Reports
             }
 
             return receives;
-        }
-
-        private async Task<decimal> CalculatePreviousStockAsync(ChillarInchargeDashboardQuery query, int tenantId)
-        {
-            var receives = _dbContext.ChillarReceives.Where(r =>
-                r.TenantId == tenantId &&
-                r.Date < query.StartDate);
-
-            if (query.ChillarId.HasValue)
-                receives = receives.Where(r => r.ChillarId == query.ChillarId.Value);
-
-            var sales = _dbContext.Sales.Where(s =>
-                s.TenantId == tenantId &&
-                s.Date < query.StartDate);
-
-            if (query.ChillarId.HasValue)
-                sales = sales.Where(s => s.ChillarId == query.ChillarId.Value);
-
-            var totalReceives = await receives.SumAsync(r => (decimal?)r.GrossLiters) ?? 0m;
-            var totalSales = await sales.SumAsync(s => (decimal?)s.GrossLiters) ?? 0m;
-
-            return totalReceives - totalSales;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using MilkChillar.Application;
 using MilkChillar.Application.DTOs.AccountLedger;
 using MilkChillar.Application.Interfaces;
@@ -536,15 +536,37 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<decimal> GetAccountBalanceAsync(int accountId, int tenantId, DateTime? asOfDate = null)
         {
+            DateTime? asOfDateUtc = asOfDate.HasValue 
+                ? NormalizeDateToUtcMidnight(asOfDate.Value).AddDays(1) 
+                : null;
+
+            // Performance optimization: start from the latest Opening Balance on or before asOfDate
+            var latestOpeningQuery = _context.AccountOpeningBalances
+                .Where(o => o.TenantId == tenantId && o.AccountId == accountId);
+
+            if (asOfDateUtc.HasValue)
+            {
+                latestOpeningQuery = latestOpeningQuery.Where(o => o.OpeningDate < asOfDateUtc.Value);
+            }
+
+            var latestOpeningDate = await latestOpeningQuery
+                .OrderByDescending(o => o.OpeningDate)
+                .Select(o => (DateTime?)o.OpeningDate)
+                .FirstOrDefaultAsync();
+
             var query = from jel in _context.JournalEntryLines
                         join je in _context.JournalEntries on jel.JournalEntryId equals je.JournalEntryId
                         where jel.AccountId == accountId && je.TenantId == tenantId
                         select new { jel.Debit, jel.Credit, je.EntryDate };
 
-            if (asOfDate.HasValue)
+            if (latestOpeningDate.HasValue)
             {
-                var asOfDateUtc = NormalizeDateToUtcMidnight(asOfDate.Value).AddDays(1);
-                query = query.Where(x => x.EntryDate < asOfDateUtc);
+                query = query.Where(x => x.EntryDate >= latestOpeningDate.Value);
+            }
+
+            if (asOfDateUtc.HasValue)
+            {
+                query = query.Where(x => x.EntryDate < asOfDateUtc.Value);
             }
 
             var transactions = await query.ToListAsync();

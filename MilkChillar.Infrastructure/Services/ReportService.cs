@@ -23,16 +23,21 @@ namespace MilkChillar.Infrastructure.Services
         private readonly SalesReportService _salesReportService;
         private readonly ChillarReportService _chillarReportService;
         private readonly ProfitLossReportService _profitLossReportService;
+        private readonly DailyTotalsReportService _dailyTotalsReportService;
         private readonly DodhiReportService _dodhiReportService;
 
-        public ReportService(ApplicationDbContext dbContext)
+        public ReportService(
+            ApplicationDbContext dbContext,
+            IDateTimeFilterService dateTimeFilterService,
+            IStockCalculationService stockCalculationService)
         {
             _dashboardReportService = new DashboardReportService(dbContext);
             _accountBalanceReportService = new AccountBalanceReportService(dbContext);
             _purchaseReportService = new PurchaseReportService(dbContext);
             _salesReportService = new SalesReportService(dbContext);
-            _chillarReportService = new ChillarReportService(dbContext);
+            _chillarReportService = new ChillarReportService(dbContext, dateTimeFilterService, stockCalculationService);
             _profitLossReportService = new ProfitLossReportService(dbContext);
+            _dailyTotalsReportService = new DailyTotalsReportService(dbContext, dateTimeFilterService, stockCalculationService);
             _dodhiReportService = new DodhiReportService(dbContext);
         }
 
@@ -91,7 +96,7 @@ namespace MilkChillar.Infrastructure.Services
 
         // Profit/Loss Reports
         public async Task<List<DailyTotalsDto>> GetDailyTotalsAsync(ProfitLossFilterRequest request, int tenantId)
-            => await _profitLossReportService.GetDailyTotalsAsync(request, tenantId);
+            => await _dailyTotalsReportService.GetDailyTotalsAsync(request, tenantId);
 
         // Dodhi Reports
         public async Task<DodhiWisePurchaseReceiveReportDto> GetDodhiWisePurchaseReceiveReportAsync(

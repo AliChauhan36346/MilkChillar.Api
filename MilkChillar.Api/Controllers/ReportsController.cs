@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using MilkChillar.Application.DTOs.Reports;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Infrastructure.Services;
 using System.Security.Claims;
-using MilkChillar.Application.DTOs.Reports;
 
 namespace MilkChillar.Api.Controllers
 {
@@ -56,11 +57,29 @@ namespace MilkChillar.Api.Controllers
         }
 
         [HttpGet("ChillarInchargeDashboardStats")]
-        public async Task<IActionResult> GetChillarInchargeDashboardStats([FromQuery] ChillarInchargeDashboardQuery query)
+        public async Task<IActionResult> GetChillarInchargeDashboardStats(
+            [FromQuery] int chillarId,
+            [FromQuery] DateOnly startDate,
+            [FromQuery] DateOnly endDate,
+            [FromQuery] int? chillarInchargeId = null,
+            [FromQuery] int? dodhiId = null,
+            [FromQuery] string? startTimeOfDay = null,
+            [FromQuery] string? endTimeOfDay = null)
         {
             int tenantId = GetTenantId();
             if (tenantId == 0)
                 return Unauthorized("Tenant ID is missing in token.");
+
+            var query = new ChillarInchargeDashboardQuery
+            {
+                ChillarId = chillarId,
+                StartDate = startDate,
+                EndDate = endDate,
+                ChillarInchargeId = chillarInchargeId,
+                DodhiId = dodhiId,
+                StartTimeOfDay = startTimeOfDay,
+                EndTimeOfDay = endTimeOfDay
+            };
 
             var result = await _dashboardStatsService.GetChillarInchargeDashboardStatsAsync(query, tenantId);
             return Ok(result);
@@ -200,9 +219,14 @@ namespace MilkChillar.Api.Controllers
             return Ok(result);
         }
 
-        // NEW - Daily totals endpoint
+        // NEW - Daily totals endpoint with optional time filters
         [HttpGet("DailyTotals")]
-        public async Task<IActionResult> GetDailyTotals([FromQuery] DateTime startDate,[FromQuery] DateTime endDate,[FromQuery] int chillarId = 0)
+        public async Task<IActionResult> GetDailyTotals(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            [FromQuery] int chillarId = 0,
+            [FromQuery] string? startTimeOfDay = null,
+            [FromQuery] string? endTimeOfDay = null)
         {
             int tenantId = GetTenantId();
             if (tenantId == 0)
@@ -212,7 +236,9 @@ namespace MilkChillar.Api.Controllers
             {
                 StartDate = startDate,
                 EndDate = endDate,
-                ChillarId = chillarId,   // 🔥 Added
+                ChillarId = chillarId,
+                StartTimeOfDay = startTimeOfDay,
+                EndTimeOfDay = endTimeOfDay,
                 Format = "json"
             };
 
@@ -325,3 +351,6 @@ namespace MilkChillar.Api.Controllers
     }
 
 }
+
+
+//ok now we have to update the dailytotals report aslo now we have to add the start date time and enddate time the logic will be same for the chillar receive and purchase like we added in dodhi summary and but as in sales we dont have time so when time filter sales criteria will be like that when user we will add sales of the startdate if the startdate time is morning selected but if the startdate time is evening we do not select the sales of that day for the enddate we select sales if the time is morning or evening like in both cases and now we also have to know that how much stock we had before our time filter so we also have to calculate that that will be calculated like that if just date selected we will calculate the chillarreceive - sales before that date and if the time also selected and start time is morning then we do not include the sales and chillarrecive of that day and if the start time is evening then we will include the sales and the morning chillarrecive of that day in stock calculation first tell me you understanding then start updating this

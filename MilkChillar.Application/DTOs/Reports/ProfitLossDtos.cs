@@ -15,6 +15,11 @@ namespace MilkChillar.Application.DTOs.Reports
 
         // Optional filter: chillar (facility) id
         public int? ChillarId { get; set; }
+
+        // Optional time filters for start and end dates
+        // Supported values: "morning", "evening"
+        public string? StartTimeOfDay { get; set; }
+        public string? EndTimeOfDay { get; set; }
     }
 
     public class ComparativeProfitLossRequest

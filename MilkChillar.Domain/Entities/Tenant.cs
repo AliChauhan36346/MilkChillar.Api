@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace MilkChillar.Domain.Entities
@@ -27,5 +27,6 @@ namespace MilkChillar.Domain.Entities
         public ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
 
         public ICollection<Chillar> Chillars { get; set; } = new List<Chillar>();
+        public ICollection<FinancialYear> FinancialYears { get; set; } = new List<FinancialYear>();
     }
 }

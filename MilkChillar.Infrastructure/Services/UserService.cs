@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.Users;
+using MilkChillar.Application.DTOs.Users;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Application.Responses;
@@ -22,6 +22,9 @@ namespace MilkChillar.Infrastructure.Services
             return await _context.Users
                 .Where(u => u.TenantId == tenantId)
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Supplier)
+                .Include(u => u.Buyer)
                 .Select(u => new UserDto
                 {
                     UserId = u.UserId,
@@ -30,6 +33,12 @@ namespace MilkChillar.Infrastructure.Services
                     UserType = u.UserType,
                     RoleId = u.RoleId,
                     RoleName = u.Role != null ? u.Role.Name : null,
+                    EmployeeId = u.EmployeeId,
+                    EmployeeName = u.Employee != null ? u.Employee.FullName : null,
+                    SupplierId = u.SupplierId,
+                    SupplierName = u.Supplier != null ? u.Supplier.FullName : null,
+                    BuyerId = u.BuyerId,
+                    BuyerName = u.Buyer != null ? u.Buyer.FullName : null,
                     CreatedAt = u.CreatedAt,
                 })
                 .ToListAsync();
@@ -42,7 +51,11 @@ namespace MilkChillar.Infrastructure.Services
 
             if (!string.IsNullOrWhiteSpace(query.Search))
             {
-                usersQuery = usersQuery.Where(u => u.Username.Contains(query.Search));
+                var term = query.Search.Trim().ToLower();
+                usersQuery = usersQuery.Where(u => u.Username.ToLower().Contains(term) ||
+                    (u.Employee != null && u.Employee.FullName.ToLower().Contains(term)) ||
+                    (u.Supplier != null && u.Supplier.FullName.ToLower().Contains(term)) ||
+                    (u.Buyer != null && u.Buyer.FullName.ToLower().Contains(term)));
             }
 
             if (query.IsBlocked.HasValue)
@@ -64,6 +77,9 @@ namespace MilkChillar.Infrastructure.Services
 
             var items = await usersQuery
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Supplier)
+                .Include(u => u.Buyer)
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
@@ -75,6 +91,12 @@ namespace MilkChillar.Infrastructure.Services
                     UserType = u.UserType,
                     RoleId = u.RoleId,
                     RoleName = u.Role != null ? u.Role.Name : null,
+                    EmployeeId = u.EmployeeId,
+                    EmployeeName = u.Employee != null ? u.Employee.FullName : null,
+                    SupplierId = u.SupplierId,
+                    SupplierName = u.Supplier != null ? u.Supplier.FullName : null,
+                    BuyerId = u.BuyerId,
+                    BuyerName = u.Buyer != null ? u.Buyer.FullName : null,
                     CreatedAt = u.CreatedAt,
                 })
                 .ToListAsync();
@@ -92,6 +114,9 @@ namespace MilkChillar.Infrastructure.Services
         {
             var user = await _context.Users
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Supplier)
+                .Include(u => u.Buyer)
                 .FirstOrDefaultAsync(u => u.UserId == id && u.TenantId == tenantId);
 
             if (user == null) return null;
@@ -104,20 +129,33 @@ namespace MilkChillar.Infrastructure.Services
                 UserType = user.UserType,
                 RoleId = user.RoleId,
                 RoleName = user.Role?.Name,
+                EmployeeId = user.EmployeeId,
+                EmployeeName = user.Employee?.FullName,
+                SupplierId = user.SupplierId,
+                SupplierName = user.Supplier?.FullName,
+                BuyerId = user.BuyerId,
+                BuyerName = user.Buyer?.FullName,
                 CreatedAt = user.CreatedAt,
             };
         }
 
         public async Task<UserDto> CreateAsync(CreateUserDto dto, int tenantId)
         {
+            var normalizedUsername = dto.Username.Trim();
+            var exists = await _context.Users.AnyAsync(u => u.TenantId == tenantId && u.Username.ToLower() == normalizedUsername.ToLower());
+            if (exists)
+            {
+                throw new InvalidOperationException($"Username '{normalizedUsername}' already exists.");
+            }
+
             var user = new User
             {
                 TenantId = tenantId,
-                Username = dto.Username,
-                PasswordHash = dto.Password, // make sure it's hashed beforehand
+                Username = normalizedUsername,
+                PasswordHash = dto.Password,
                 IsBlocked = dto.IsBlocked,
                 RoleId = dto.RoleId,
-                UserType = dto.UserType,
+                UserType = string.IsNullOrWhiteSpace(dto.UserType) ? "standard" : dto.UserType,
                 SupplierId = dto.SupplierId,
                 EmployeeId = dto.EmployeeId,
                 BuyerId = dto.BuyerId,
@@ -135,9 +173,34 @@ namespace MilkChillar.Infrastructure.Services
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == id && u.TenantId == tenantId);
             if (user == null) return null;
 
+            if (!string.IsNullOrWhiteSpace(dto.Username))
+            {
+                var normalizedUsername = dto.Username.Trim();
+                if (!string.Equals(user.Username, normalizedUsername, StringComparison.OrdinalIgnoreCase))
+                {
+                    var exists = await _context.Users.AnyAsync(u => u.TenantId == tenantId && u.UserId != id && u.Username.ToLower() == normalizedUsername.ToLower());
+                    if (exists)
+                    {
+                        throw new InvalidOperationException($"Username '{normalizedUsername}' already exists.");
+                    }
+                    user.Username = normalizedUsername;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                user.PasswordHash = dto.Password;
+            }
+
             user.IsBlocked = dto.IsBlocked;
-            user.UserType = dto.UserType;
+            if (!string.IsNullOrWhiteSpace(dto.UserType))
+            {
+                user.UserType = dto.UserType;
+            }
             user.RoleId = dto.RoleId;
+            user.SupplierId = dto.SupplierId;
+            user.EmployeeId = dto.EmployeeId;
+            user.BuyerId = dto.BuyerId;
 
             await _context.SaveChangesAsync();
 

@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.UserPermissions;
+using MilkChillar.Application.DTOs.UserPermissions;
 using MilkChillar.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -53,6 +53,24 @@ namespace MilkChillar.Api.Controllers
         {
             var tenantId = GetTenantId();
             var result = await _userPermissionService.AssignMultiplePermissionsAsync(userId, permissionIds, tenantId);
+            return Ok(result);
+        }
+
+        [HttpPut("{userId}/sync")]
+        [Authorize(Policy = "userpermission.create")]
+        public async Task<IActionResult> Sync(int userId, [FromBody] List<int> permissionIds)
+        {
+            var tenantId = GetTenantId();
+            var result = await _userPermissionService.SyncUserPermissionsAsync(userId, permissionIds, tenantId);
+            return Ok(result);
+        }
+
+        [HttpGet("{userId}/effective")]
+        [Authorize(Policy = "userpermission.read")]
+        public async Task<IActionResult> GetEffective(int userId)
+        {
+            var tenantId = GetTenantId();
+            var result = await _userPermissionService.GetEffectivePermissionsAsync(userId, tenantId);
             return Ok(result);
         }
 

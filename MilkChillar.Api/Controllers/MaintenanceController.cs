@@ -20,10 +20,18 @@ namespace MilkChillar.API.Controllers
 
         private int GetTenantId()
         {
-            var tenantIdStr = User.FindFirstValue("tenant_id");
+            var tenantIdStr = User.FindFirstValue("tenant_id") ?? User.FindFirstValue("tenantId");
             if (string.IsNullOrWhiteSpace(tenantIdStr))
                 throw new UnauthorizedAccessException("Tenant ID is missing from the token.");
             return int.Parse(tenantIdStr);
+        }
+
+        private int GetUserId()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("userId") ?? User.FindFirstValue("id");
+            if (string.IsNullOrWhiteSpace(userIdStr))
+                throw new UnauthorizedAccessException("User ID is missing from the token.");
+            return int.Parse(userIdStr);
         }
 
         [HttpPost("mass-update-supplier-rate-by-dodhi")]
@@ -100,6 +108,25 @@ namespace MilkChillar.API.Controllers
             var result = await _maintenanceService.UpdateBuyerRateForPeriod(
                 accountId, newRate, DateOnly.Parse(startDate), DateOnly.Parse(endDate), tenantId);
             return result ? Ok() : BadRequest();
+        }
+
+        [HttpGet("cleanup-preview")]
+        [Authorize]
+        public async Task<ActionResult<DataCleanupPreviewDto>> GetCleanupPreview()
+        {
+            var tenantId = GetTenantId();
+            var preview = await _maintenanceService.GetCleanupPreviewAsync(tenantId);
+            return Ok(preview);
+        }
+
+        [HttpPost("cleanup")]
+        [Authorize]
+        public async Task<ActionResult<DataCleanupResultDto>> ExecuteCleanup([FromBody] DataCleanupRequestDto request)
+        {
+            var tenantId = GetTenantId();
+            var userId = GetUserId();
+            var result = await _maintenanceService.ExecuteCleanupAsync(request, tenantId, userId);
+            return Ok(result);
         }
     }
 }
