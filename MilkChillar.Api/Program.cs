@@ -27,18 +27,39 @@ var allowedOriginsCsv = builder.Configuration["ALLOWED_ORIGINS"]
     ?? builder.Configuration["Cors:AllowedOrigins"] 
     ?? "http://localhost:3000,http://127.0.0.1:3000,https://chuhandaries189.vercel.app";
 
-var allowedOrigins = allowedOriginsCsv
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var configuredOrigins = allowedOriginsCsv
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(o => o.TrimEnd('/'))
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin)) return false;
+                var trimmed = origin.TrimEnd('/');
+                if (configuredOrigins.Contains(trimmed)) return true;
+
+                try
+                {
+                    var uri = new Uri(origin);
+                    var host = uri.Host;
+                    return host == "localhost" 
+                        || host == "127.0.0.1" 
+                        || host == "chuhandaries189.vercel.app"
+                        || host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+                }
+                catch
+                {
+                    return false;
+                }
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
         });
 });
 
@@ -197,6 +218,39 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 // ✅ CORS must be early in the pipeline
 app.UseCors("AllowFrontend");
+
+// Global exception handling to ensure errors return structured JSON with CORS headers
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        var origin = context.Request.Headers.Origin.ToString();
+        if (!string.IsNullOrEmpty(origin) && !context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+        {
+            context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+        }
+
+        context.Response.ContentType = "application/json";
+        context.Response.StatusCode = ex switch
+        {
+            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            InvalidOperationException => StatusCodes.Status400BadRequest,
+            _ => StatusCodes.Status500InternalServerError
+        };
+
+        var responseObj = new 
+        { 
+            message = ex.Message, 
+            status = context.Response.StatusCode 
+        };
+        await context.Response.WriteAsJsonAsync(responseObj);
+    }
+});
 
 // Swagger UI - available in development or when explicitly enabled
 var enableSwagger = builder.Configuration.GetValue<bool>("EnableSwagger", true);

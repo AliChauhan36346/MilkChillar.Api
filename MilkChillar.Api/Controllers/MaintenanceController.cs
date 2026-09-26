@@ -112,21 +112,47 @@ namespace MilkChillar.API.Controllers
 
         [HttpGet("cleanup-preview")]
         [Authorize]
-        public async Task<ActionResult<DataCleanupPreviewDto>> GetCleanupPreview()
+        public async Task<IActionResult> GetCleanupPreview()
         {
-            var tenantId = GetTenantId();
-            var preview = await _maintenanceService.GetCleanupPreviewAsync(tenantId);
-            return Ok(preview);
+            try
+            {
+                var tenantId = GetTenantId();
+                var preview = await _maintenanceService.GetCleanupPreviewAsync(tenantId);
+                return Ok(preview);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
 
         [HttpPost("cleanup")]
         [Authorize]
-        public async Task<ActionResult<DataCleanupResultDto>> ExecuteCleanup([FromBody] DataCleanupRequestDto request)
+        public async Task<IActionResult> ExecuteCleanup([FromBody] DataCleanupRequestDto request)
         {
-            var tenantId = GetTenantId();
-            var userId = GetUserId();
-            var result = await _maintenanceService.ExecuteCleanupAsync(request, tenantId, userId);
-            return Ok(result);
+            try
+            {
+                var tenantId = GetTenantId();
+                var userId = GetUserId();
+                var result = await _maintenanceService.ExecuteCleanupAsync(request, tenantId, userId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
         }
     }
 }

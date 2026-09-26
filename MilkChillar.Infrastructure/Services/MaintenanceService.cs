@@ -294,6 +294,31 @@ namespace MilkChillar.Infrastructure.Services
 
                 if (request.ClearJournalEntries)
                 {
+                    // Unlink foreign keys pointing to journal_entries to avoid constraint violations
+                    await _context.FinancialYears
+                        .Where(fy => fy.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(fy => fy.ClosingJournalEntryId, (int?)null));
+
+                    await _context.AccountOpeningBalances
+                        .Where(ob => ob.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(ob => ob.JournalEntryId, (int?)null));
+
+                    await _context.CashPayments
+                        .Where(cp => cp.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(cp => cp.JournalEntryId, (int?)null));
+
+                    await _context.CashReceipts
+                        .Where(cr => cr.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(cr => cr.JournalEntryId, (int?)null));
+
+                    await _context.BankPayments
+                        .Where(bp => bp.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(bp => bp.JournalEntryId, (int?)null));
+
+                    await _context.BankReceipts
+                        .Where(br => br.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(br => br.JournalEntryId, (int?)null));
+
                     var journalEntryIds = await _context.JournalEntries
                         .Where(je => je.TenantId == tenantId)
                         .Select(je => je.JournalEntryId)
@@ -351,6 +376,11 @@ namespace MilkChillar.Infrastructure.Services
                     await _context.AccountOpeningBalances
                         .Where(ob => ob.TenantId == tenantId)
                         .ExecuteDeleteAsync();
+
+                    // Unlink retained earnings before deleting accounts
+                    await _context.FinancialYears
+                        .Where(fy => fy.TenantId == tenantId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(fy => fy.RetainedEarningsAccountId, (int?)null));
 
                     result.DeletedAccounts = await _context.Accounts
                         .Where(a => a.TenantId == tenantId)
