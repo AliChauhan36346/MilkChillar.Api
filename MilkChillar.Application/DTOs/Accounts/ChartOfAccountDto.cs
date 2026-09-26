@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,10 @@ namespace MilkChillar.Application.DTOs.Accounts
         public string MainAccountCode { get; set; } = default!;
         public string Name { get; set; } = default!;
         public string FinancialStatementComponent { get; set; } = default!;
+        public decimal DebitTotal { get; set; } = 0;
+        public decimal CreditTotal { get; set; } = 0;
+        public decimal Balance { get; set; } = 0;
+        public string BalanceType { get; set; } = "Dr";
         public List<SubAccountNodeDto> SubAccounts { get; set; } = new();
     }
 
@@ -20,6 +24,10 @@ namespace MilkChillar.Application.DTOs.Accounts
         public int SubAccountId { get; set; }
         public string SubAccountCode { get; set; } = default!;
         public string Name { get; set; } = default!;
+        public decimal DebitTotal { get; set; } = 0;
+        public decimal CreditTotal { get; set; } = 0;
+        public decimal Balance { get; set; } = 0;
+        public string BalanceType { get; set; } = "Dr";
         public List<AccountNodeDto> Accounts { get; set; } = new();
     }
 
@@ -29,6 +37,10 @@ namespace MilkChillar.Application.DTOs.Accounts
         public string AccountCode { get; set; } = default!;
         public string FullCode { get; set; } = default!;
         public string Name { get; set; } = default!;
+        public decimal DebitTotal { get; set; } = 0;
+        public decimal CreditTotal { get; set; } = 0;
+        public decimal Balance { get; set; } = 0;
+        public string BalanceType { get; set; } = "Dr";
     }
 
 }

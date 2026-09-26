@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.Accounts;
+using MilkChillar.Application.DTOs.Accounts;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application;
 using MilkChillar.Domain.Entities;
@@ -325,28 +325,94 @@ namespace MilkChillar.Infrastructure.Services
                 .Where(m => m.TenantId == tenantId)
                 .Include(m => m.SubAccounts)
                     .ThenInclude(sa => sa.Accounts)
+                .OrderBy(m => m.MainAccountCode)
                 .ToListAsync();
 
-            var result = mainAccounts.Select(m => new ChartOfAccountDto
+            // Load balances for this tenant
+            var balances = await _context.AccountBalances
+                .Where(b => b.TenantId == tenantId)
+                .ToDictionaryAsync(b => b.AccountId, b => b);
+
+            var result = new List<ChartOfAccountDto>();
+
+            foreach (var m in mainAccounts)
             {
-                MainAccountId = m.MainAccountId,
-                MainAccountCode = m.MainAccountCode,
-                Name = m.Name,
-                FinancialStatementComponent = m.FinancialStatementComponent,
-                SubAccounts = m.SubAccounts.Select(sa => new SubAccountNodeDto
+                var mainDto = new ChartOfAccountDto
                 {
-                    SubAccountId = sa.SubAccountId,
-                    SubAccountCode = sa.SubAccountCode,
-                    Name = sa.Name,
-                    Accounts = sa.Accounts.Select(a => new AccountNodeDto
+                    MainAccountId = m.MainAccountId,
+                    MainAccountCode = m.MainAccountCode,
+                    Name = m.Name,
+                    FinancialStatementComponent = m.FinancialStatementComponent,
+                    SubAccounts = new List<SubAccountNodeDto>()
+                };
+
+                bool isDebitNormal = m.MainAccountCode.StartsWith("1") || 
+                                     m.MainAccountCode.StartsWith("5") || 
+                                     m.MainAccountCode.StartsWith("6") || 
+                                     m.MainAccountCode.StartsWith("7") ||
+                                     m.FinancialStatementComponent.Contains("Asset", StringComparison.OrdinalIgnoreCase) ||
+                                     m.FinancialStatementComponent.Contains("Expense", StringComparison.OrdinalIgnoreCase) ||
+                                     m.FinancialStatementComponent.Equals("CostOfSales", StringComparison.OrdinalIgnoreCase);
+
+                foreach (var sa in m.SubAccounts.OrderBy(s => s.SubAccountCode))
+                {
+                    var subDto = new SubAccountNodeDto
                     {
-                        AccountId = a.AccountId,
-                        AccountCode = a.AccountCode,
-                        FullCode = a.FullCode,
-                        Name = a.Name
-                    }).ToList()
-                }).ToList()
-            }).ToList();
+                        SubAccountId = sa.SubAccountId,
+                        SubAccountCode = sa.SubAccountCode,
+                        Name = sa.Name,
+                        Accounts = new List<AccountNodeDto>()
+                    };
+
+                    foreach (var a in sa.Accounts.OrderBy(acc => acc.AccountCode))
+                    {
+                        decimal debit = 0;
+                        decimal credit = 0;
+                        if (balances.TryGetValue(a.AccountId, out var b))
+                        {
+                            debit = b.DebitTotal;
+                            credit = b.CreditTotal;
+                        }
+
+                        decimal net = isDebitNormal ? (debit - credit) : (credit - debit);
+                        string balanceType = net >= 0 
+                            ? (isDebitNormal ? "Dr" : "Cr")
+                            : (isDebitNormal ? "Cr" : "Dr");
+
+                        subDto.Accounts.Add(new AccountNodeDto
+                        {
+                            AccountId = a.AccountId,
+                            AccountCode = a.AccountCode,
+                            FullCode = a.FullCode,
+                            Name = a.Name,
+                            DebitTotal = debit,
+                            CreditTotal = credit,
+                            Balance = Math.Abs(net),
+                            BalanceType = balanceType
+                        });
+                    }
+
+                    subDto.DebitTotal = subDto.Accounts.Sum(x => x.DebitTotal);
+                    subDto.CreditTotal = subDto.Accounts.Sum(x => x.CreditTotal);
+                    decimal subNet = isDebitNormal ? (subDto.DebitTotal - subDto.CreditTotal) : (subDto.CreditTotal - subDto.DebitTotal);
+                    subDto.Balance = Math.Abs(subNet);
+                    subDto.BalanceType = subNet >= 0 
+                        ? (isDebitNormal ? "Dr" : "Cr") 
+                        : (isDebitNormal ? "Cr" : "Dr");
+
+                    mainDto.SubAccounts.Add(subDto);
+                }
+
+                mainDto.DebitTotal = mainDto.SubAccounts.Sum(x => x.DebitTotal);
+                mainDto.CreditTotal = mainDto.SubAccounts.Sum(x => x.CreditTotal);
+                decimal mainNet = isDebitNormal ? (mainDto.DebitTotal - mainDto.CreditTotal) : (mainDto.CreditTotal - mainDto.DebitTotal);
+                mainDto.Balance = Math.Abs(mainNet);
+                mainDto.BalanceType = mainNet >= 0 
+                    ? (isDebitNormal ? "Dr" : "Cr") 
+                    : (isDebitNormal ? "Cr" : "Dr");
+
+                result.Add(mainDto);
+            }
 
             return result;
         }
