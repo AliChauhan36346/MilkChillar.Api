@@ -1,4 +1,4 @@
-﻿// MilkChillar.Infrastructure/Authorization/PermissionHandler.cs
+// MilkChillar.Infrastructure/Authorization/PermissionHandler.cs
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
 
@@ -10,9 +10,11 @@ namespace MilkChillar.Infrastructure.Authorization
             AuthorizationHandlerContext context,
             PermissionRequirement requirement)
         {
-            if (context.User.HasClaim(c =>
-                c.Type == "permissions" &&
-                c.Value == requirement.Permission))
+            if (context.User.IsInRole("admin") ||
+                context.User.IsInRole("Admin") ||
+                context.User.HasClaim(c =>
+                    c.Type == "permissions" &&
+                    c.Value == requirement.Permission))
             {
                 context.Succeed(requirement);
             }

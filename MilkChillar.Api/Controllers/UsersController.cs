@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.Users;
+using MilkChillar.Application.DTOs.Users;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Application.Responses;
@@ -21,7 +21,7 @@ namespace MilkChillar.Api.Controllers
         }
 
         private int GetTenantId() =>
-            int.Parse(User.FindFirstValue("tenantId") ?? "0");
+            int.Parse(User.FindFirstValue("tenant_id") ?? User.FindFirstValue("tenantId") ?? "0");
 
         // GET: api/users
         [HttpGet]

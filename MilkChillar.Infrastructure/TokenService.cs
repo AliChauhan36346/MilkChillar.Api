@@ -1,4 +1,4 @@
-﻿// MilkChillar.Infrastructure/TokenService.cs
+// MilkChillar.Infrastructure/TokenService.cs
 using Microsoft.Extensions.Options;
 using MilkChillar.Application.Common.Settings;
 using MilkChillar.Domain.Entities;
@@ -24,7 +24,8 @@ namespace MilkChillar.Infrastructure
             {
                 new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new(ClaimTypes.Name, user.Username),
-                new("tenant_id", user.TenantId.ToString())
+                new("tenant_id", user.TenantId.ToString()),
+                new("tenantId", user.TenantId.ToString())
             };
 
             foreach (var role in roles)

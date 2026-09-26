@@ -18,7 +18,7 @@ namespace MilkChillar.Api.Controllers
         }
 
         private int GetTenantId() =>
-            int.TryParse(User.FindFirstValue("tenantId"), out var tenantId) ? tenantId : 0;
+            int.TryParse(User.FindFirstValue("tenant_id") ?? User.FindFirstValue("tenantId"), out var tenantId) ? tenantId : 0;
 
         [HttpGet]
         [Authorize(Policy = "userpermission.read")]
