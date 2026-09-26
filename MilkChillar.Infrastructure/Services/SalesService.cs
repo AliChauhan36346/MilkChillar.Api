@@ -1,4 +1,4 @@
-﻿using MilkChillar.Application.DTOs.Sales;
+using MilkChillar.Application.DTOs.Sales;
 using MilkChillar.Application.Interfaces;
 using MilkChillar.Application.Parameters;
 using MilkChillar.Application.Responses;
@@ -104,6 +104,13 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<SaleDto> CreateAsync(CreateSaleDto dto, int tenantId, int addedByUserId)
         {
+            var buyer = await _context.Buyers
+                .FirstOrDefaultAsync(b => b.AccountId == dto.AccountId && b.TenantId == tenantId);
+            if (buyer != null && !buyer.IsActive)
+            {
+                throw new InvalidOperationException("Cannot add sales for an inactive buyer.");
+            }
+
             var sale = new Sales
             {
                 TenantId = tenantId,
@@ -213,10 +220,10 @@ namespace MilkChillar.Infrastructure.Services
             bool isChillarIncharge = employee?.Designation.ToLower() == "chillarincharge";
             int? chillarId = isChillarIncharge ? employee.ChillarId : null;
 
-            // Get all buyers with their accounts
+            // Get all active buyers with their accounts
             var allBuyers = await _context.Buyers
                 .Include(b => b.Account)
-                .Where(b => b.TenantId == tenantId && b.Account.SubAccount.MainAccount.Name.ToLower() == "buyers")
+                .Where(b => b.TenantId == tenantId && b.IsActive && b.Account.SubAccount.MainAccount.Name.ToLower() == "buyers")
                 .ToListAsync();
 
             var revenueAccounts = await (

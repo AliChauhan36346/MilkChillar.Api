@@ -1,4 +1,4 @@
-﻿//    using MilkChillar.Application.DTOs.Purchase;
+//    using MilkChillar.Application.DTOs.Purchase;
 //using MilkChillar.Application.Interfaces;
 //using MilkChillar.Application.Parameters;
 //using MilkChillar.Application.Responses;
@@ -717,6 +717,13 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<PurchaseDto> CreateAsync(CreatePurchaseDto dto, int tenantId)
         {
+            var supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.AccountId == dto.AccountId && s.TenantId == tenantId);
+            if (supplier != null && !supplier.IsActive)
+            {
+                throw new InvalidOperationException("Cannot add purchase for an inactive supplier.");
+            }
+
             var purchase = new Purchase
             {
                 TenantId = tenantId,

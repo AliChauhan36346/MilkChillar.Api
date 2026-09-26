@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +14,6 @@ namespace MilkChillar.Application.Parameters
         public int? DodhiId { get; set; }
         public int? SupplierId { get; set; }
         public string? Search { get; set; }
-        public bool? IsActive { get; set; } = true; // Only active suppliers by default
+        public bool? IsActive { get; set; }
     }
 }
