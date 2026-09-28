@@ -18,13 +18,13 @@ namespace MilkChillar.Infrastructure.Services
         public async Task<List<UserPermissionDto>> GetAllAsync(int tenantId)
         {
             return await _context.UserPermissions
-                .Where(up => up.User.TenantId == tenantId)
+                .Where(up => tenantId == 0 || up.User.TenantId == tenantId)
                 .Include(up => up.Permission)
                 .Select(up => new UserPermissionDto
                 {
                     UserId = up.UserId,
                     PermissionId = up.PermissionId,
-                    PermissionName = up.Permission.Name,
+                    PermissionName = up.Permission != null ? up.Permission.Name : null,
                     GrantedAt = up.GrantedAt
                 })
                 .ToListAsync();
@@ -33,13 +33,13 @@ namespace MilkChillar.Infrastructure.Services
         public async Task<List<UserPermissionDto>> GetByUserIdAsync(int userId, int tenantId)
         {
             return await _context.UserPermissions
-                .Where(up => up.UserId == userId && up.User.TenantId == tenantId)
+                .Where(up => up.UserId == userId && (tenantId == 0 || up.User.TenantId == tenantId))
                 .Include(up => up.Permission)
                 .Select(up => new UserPermissionDto
                 {
                     UserId = up.UserId,
                     PermissionId = up.PermissionId,
-                    PermissionName = up.Permission.Name,
+                    PermissionName = up.Permission != null ? up.Permission.Name : null,
                     GrantedAt = up.GrantedAt
                 })
                 .ToListAsync();
@@ -53,7 +53,7 @@ namespace MilkChillar.Infrastructure.Services
             if (exists)
                 throw new Exception("Permission already assigned to the user.");
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == dto.UserId && u.TenantId == tenantId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == dto.UserId && (tenantId == 0 || u.TenantId == tenantId));
             if (user == null)
                 throw new Exception("User not found or doesn't belong to the tenant.");
 
@@ -93,7 +93,7 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<List<UserPermissionDto>> AssignMultiplePermissionsAsync(int userId, List<int> permissionIds, int tenantId)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId && u.TenantId == tenantId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId && (tenantId == 0 || u.TenantId == tenantId));
             if (user == null)
                 throw new Exception("User not found or doesn't belong to the tenant.");
 
@@ -121,7 +121,7 @@ namespace MilkChillar.Infrastructure.Services
                 {
                     UserId = up.UserId,
                     PermissionId = up.PermissionId,
-                    PermissionName = up.Permission.Name,
+                    PermissionName = up.Permission != null ? up.Permission.Name : null,
                     GrantedAt = up.GrantedAt
                 }).ToListAsync();
 
@@ -130,7 +130,7 @@ namespace MilkChillar.Infrastructure.Services
 
         public async Task<List<UserPermissionDto>> SyncUserPermissionsAsync(int userId, List<int> permissionIds, int tenantId)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId && u.TenantId == tenantId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId && (tenantId == 0 || u.TenantId == tenantId));
             if (user == null)
                 throw new Exception("User not found or doesn't belong to the tenant.");
 
@@ -170,7 +170,7 @@ namespace MilkChillar.Infrastructure.Services
                 {
                     UserId = up.UserId,
                     PermissionId = up.PermissionId,
-                    PermissionName = up.Permission.Name,
+                    PermissionName = up.Permission != null ? up.Permission.Name : null,
                     GrantedAt = up.GrantedAt
                 }).ToListAsync();
         }
@@ -183,18 +183,26 @@ namespace MilkChillar.Infrastructure.Services
                     .ThenInclude(rp => rp.Permission)
                 .Include(u => u.UserPermissions)
                     .ThenInclude(up => up.Permission)
-                .FirstOrDefaultAsync(u => u.UserId == userId && u.TenantId == tenantId);
+                .FirstOrDefaultAsync(u => u.UserId == userId && (tenantId == 0 || u.TenantId == tenantId));
 
             if (user == null)
                 throw new Exception("User not found or doesn't belong to the tenant.");
 
-            var rolePermissions = user.Role?.RolePermissions.ToList() ?? new List<RolePermission>();
+            var rolePermissions = user.Role?.RolePermissions?.ToList() ?? new List<RolePermission>();
             var rolePermissionIds = rolePermissions.Select(rp => rp.PermissionId).Distinct().ToList();
-            var rolePermissionNames = rolePermissions.Select(rp => rp.Permission.Name).Distinct().ToList();
+            var rolePermissionNames = rolePermissions
+                .Where(rp => rp.Permission != null && !string.IsNullOrEmpty(rp.Permission.Name))
+                .Select(rp => rp.Permission.Name)
+                .Distinct()
+                .ToList();
 
-            var userPermissions = user.UserPermissions.ToList();
+            var userPermissions = user.UserPermissions?.ToList() ?? new List<UserPermission>();
             var directUserPermissionIds = userPermissions.Select(up => up.PermissionId).Distinct().ToList();
-            var directUserPermissionNames = userPermissions.Select(up => up.Permission.Name).Distinct().ToList();
+            var directUserPermissionNames = userPermissions
+                .Where(up => up.Permission != null && !string.IsNullOrEmpty(up.Permission.Name))
+                .Select(up => up.Permission.Name)
+                .Distinct()
+                .ToList();
 
             var effectiveNames = rolePermissionNames.Union(directUserPermissionNames).Distinct().ToList();
 
