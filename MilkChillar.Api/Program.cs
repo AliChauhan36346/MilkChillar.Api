@@ -95,13 +95,40 @@ builder.Services.AddAuthentication(options =>
     {
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+            if (context.Exception is SecurityTokenExpiredException)
+            {
+                context.Response.Headers.Append("Token-Expired", "true");
+            }
+            Console.WriteLine($"Authentication failed: {context.Exception?.Message}");
             return Task.CompletedTask;
         },
-        OnChallenge = context =>
+        OnChallenge = async context =>
         {
-            Console.WriteLine($"Authentication challenge: {context.Error}");
-            return Task.CompletedTask;
+            if (!context.Response.HasStarted)
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+
+                var origin = context.Request.Headers.Origin.ToString();
+                if (!string.IsNullOrEmpty(origin) && !context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
+                {
+                    context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+                    context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+                }
+
+                var isExpired = context.AuthenticateFailure is SecurityTokenExpiredException;
+                var message = isExpired
+                    ? "Your session has expired. Please log in again."
+                    : "You are not authorized to perform this action. Please log in.";
+
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    status = 401,
+                    message,
+                    isExpired
+                });
+            }
         }
     };
 });

@@ -28,14 +28,15 @@ namespace MilkChillar.Infrastructure.Services.Reports
             var purchasesQuery = BuildPurchaseQuery(query, tenantId);
             var totalCount = await purchasesQuery.CountAsync();
 
-            var purchases = await purchasesQuery
+            var purchaseEntities = await purchasesQuery
                 .OrderBy(p => p.Date)
                 .ThenBy(p => p.TimeOfDay)
                 .ThenBy(p => p.Account.Name)
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
-                .Select(p => MapToPurchaseDetailDto(p))
                 .ToListAsync();
+
+            var purchases = purchaseEntities.Select(MapToPurchaseDetailDto).ToList();
 
             return new PagedPurchaseReportDto
             {
@@ -55,23 +56,29 @@ namespace MilkChillar.Infrastructure.Services.Reports
         {
             var purchasesQuery = BuildPurchaseQuery(query, tenantId);
 
-            var summaryData = await purchasesQuery
-                .GroupBy(p => 1)
-                .Select(g => new
+            var totalTransactions = await purchasesQuery.CountAsync();
+            if (totalTransactions == 0)
+            {
+                return new PurchaseReportSummaryDto
                 {
-                    TotalLiters = g.Sum(p => p.GrossLiters),
-                    TotalAmount = g.Sum(p => p.GrossLiters * p.Rate),
-                    TotalTransactions = g.Count(),
-                    TotalSuppliers = g.Select(p => p.AccountId).Distinct().Count()
-                })
-                .FirstOrDefaultAsync();
+                    TotalLiters = 0,
+                    TotalAmount = 0,
+                    TotalTransactions = 0,
+                    TotalSuppliers = 0,
+                    AverageRate = 0
+                };
+            }
+
+            var totalLiters = await purchasesQuery.SumAsync(p => p.GrossLiters);
+            var totalAmount = await purchasesQuery.SumAsync(p => p.GrossLiters * p.Rate);
+            var totalSuppliers = await purchasesQuery.Select(p => p.AccountId).Distinct().CountAsync();
 
             var summary = new PurchaseReportSummaryDto
             {
-                TotalLiters = summaryData?.TotalLiters ?? 0,
-                TotalAmount = summaryData?.TotalAmount ?? 0,
-                TotalTransactions = summaryData?.TotalTransactions ?? 0,
-                TotalSuppliers = summaryData?.TotalSuppliers ?? 0
+                TotalLiters = totalLiters,
+                TotalAmount = totalAmount,
+                TotalTransactions = totalTransactions,
+                TotalSuppliers = totalSuppliers
             };
 
             summary.AverageRate = ReportCalculationHelper.CalculateAverageRate(summary.TotalAmount, summary.TotalLiters);
@@ -85,29 +92,51 @@ namespace MilkChillar.Infrastructure.Services.Reports
         {
             var purchasesQuery = BuildPurchaseQuery(query, tenantId);
 
-            var supplierSummaries = await purchasesQuery
+            var supplierAggregates = await purchasesQuery
                 .GroupBy(p => new { p.AccountId, p.Account.AccountCode, p.Account.Name })
-                .Select(g => new SupplierPurchaseSummaryDto
+                .Select(g => new
                 {
                     AccountId = g.Key.AccountId,
                     AccountCode = g.Key.AccountCode,
                     AccountName = g.Key.Name,
                     TotalLiters = g.Sum(p => p.GrossLiters),
                     TotalAmount = g.Sum(p => p.GrossLiters * p.Rate),
-                    TransactionCount = g.Count(),
-                    Balance = g.OrderByDescending(p => p.Date)
-                               .ThenByDescending(p => p.TimeOfDay)
-                               .Select(p => p.Balance)
-                               .FirstOrDefault()
+                    TransactionCount = g.Count()
                 })
                 .OrderByDescending(s => s.TotalAmount)
                 .ToListAsync();
 
-            // Calculate rates
-            foreach (var supplier in supplierSummaries)
+            if (supplierAggregates.Count == 0)
             {
-                supplier.AverageRate = ReportCalculationHelper.CalculateAverageRate(supplier.TotalAmount, supplier.TotalLiters);
+                return new SupplierWisePurchaseReportDto
+                {
+                    SupplierSummaries = new List<SupplierPurchaseSummaryDto>(),
+                    OverallSummary = new PurchaseReportSummaryDto()
+                };
             }
+
+            // Get the latest balance for each supplier account in this query set
+            var latestBalances = await purchasesQuery
+                .OrderByDescending(p => p.Date)
+                .ThenByDescending(p => p.TimeOfDay)
+                .Select(p => new { p.AccountId, p.Balance })
+                .ToListAsync();
+
+            var balanceByAccount = latestBalances
+                .GroupBy(x => x.AccountId)
+                .ToDictionary(g => g.Key, g => g.First().Balance);
+
+            var supplierSummaries = supplierAggregates.Select(s => new SupplierPurchaseSummaryDto
+            {
+                AccountId = s.AccountId,
+                AccountCode = s.AccountCode,
+                AccountName = s.AccountName,
+                TotalLiters = s.TotalLiters,
+                TotalAmount = s.TotalAmount,
+                TransactionCount = s.TransactionCount,
+                Balance = balanceByAccount.TryGetValue(s.AccountId, out var bal) ? bal : 0,
+                AverageRate = ReportCalculationHelper.CalculateAverageRate(s.TotalAmount, s.TotalLiters)
+            }).ToList();
 
             // Calculate overall summary
             var overallSummary = new PurchaseReportSummaryDto
@@ -182,12 +211,12 @@ namespace MilkChillar.Infrastructure.Services.Reports
                 PurchaseId = p.PurchaseId,
                 Date = p.Date.ToDateTime(TimeOnly.MinValue),
                 TimeOfDay = p.TimeOfDay,
-                AccountCode = p.Account.AccountCode,
-                AccountName = p.Account.Name,
-                ExpenseAccountName = p.ExpenseAccount.Name,
-                DodhiName = p.Dodhi.FullName,
+                AccountCode = p.Account != null ? p.Account.AccountCode : "",
+                AccountName = p.Account != null ? p.Account.Name : "",
+                ExpenseAccountName = p.ExpenseAccount != null ? p.ExpenseAccount.Name : "",
+                DodhiName = p.Dodhi != null ? p.Dodhi.FullName : "",
                 DodhiId = p.DodhiId,
-                ChillarName = p.Dodhi.Chillar != null ? p.Dodhi.Chillar.Name : "",
+                ChillarName = p.Dodhi?.Chillar != null ? p.Dodhi.Chillar.Name : "",
                 GrossLiters = p.GrossLiters,
                 Rate = p.Rate,
                 TotalAmount = p.GrossLiters * p.Rate,
